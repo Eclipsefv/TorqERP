@@ -1,14 +1,25 @@
-datasource db {
-  provider = "postgresql"
-  // Borra o comenta la línea de: url = env("DATABASE_URL")
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
 }
 
-generator client {
-  provider = "prisma-client-js"
+datasource db {
+  provider = "postgresql"
+}
+
+// Definimos el Enum para los roles
+enum Role {
+  ADMIN
+  MANAGER
+  USER
 }
 
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  username      String   @unique
+  password      String   // El toque de seguridad que faltaba
+  role          Role     @default(USER)
+  creation_date DateTime @default(now())
+  last_login    DateTime @updatedAt
 }
