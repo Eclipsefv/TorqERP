@@ -1,0 +1,14 @@
+# env variables
+.env
+api-backend/.env
+**/.env
+
+# Node.js
+api-backend/node_modules/
+api-backend/dist/
+
+# .NET
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
