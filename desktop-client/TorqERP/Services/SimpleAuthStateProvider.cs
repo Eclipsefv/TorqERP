@@ -47,7 +47,9 @@ namespace TorqERP.Services
 
         public void NotifyLogout()
         {
-            NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(_anonymous)));
+            var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
+            var authState = Task.FromResult(new AuthenticationState(anonymous));
+            NotifyAuthenticationStateChanged(authState);
         }
     }
 }

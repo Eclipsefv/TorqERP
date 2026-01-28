@@ -53,7 +53,11 @@ public class AuthService
 
     public async Task Logout()
     {
-        SecureStorage.Default.Remove("user_session");
+
+        SecureStorage.Default.Remove("user_token");
+        SecureStorage.Default.Remove("user_role");
+        SecureStorage.Default.Remove("user_email");
+
         _authStateProvider.NotifyLogout();
     }
 }

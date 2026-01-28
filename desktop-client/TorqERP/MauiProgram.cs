@@ -41,6 +41,9 @@ namespace TorqERP
             //auth logic servuce
             builder.Services.AddScoped<AuthService>();
 
+            //style
+            builder.Services.AddSingleton<TorqThemeService>();
+
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
             builder.Logging.AddDebug();
