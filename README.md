@@ -6,3 +6,5 @@ For the backend I've decided to use Node.js/express because it's the technology 
 For the frontend I'm going to use .NET MAUI, I'm very used to C#/.NET as a whole and I'm using Razor for the UI because it allows me to have web components for styling the pages.
 
 I will use PostgreSQL for the database, it's a very solid relational system and for an ERP it is integral to have a relational system.
+
+AuthState for login auth in frontend
