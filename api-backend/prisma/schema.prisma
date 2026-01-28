@@ -7,7 +7,6 @@ datasource db {
   provider = "postgresql"
 }
 
-// Definimos el Enum para los roles
 enum Role {
   ADMIN
   MANAGER
@@ -18,7 +17,7 @@ model User {
   id            Int      @id @default(autoincrement())
   email         String   @unique
   username      String   @unique
-  password      String   // El toque de seguridad que faltaba
+  password      String  
   role          Role     @default(USER)
   creation_date DateTime @default(now())
   last_login    DateTime @updatedAt
