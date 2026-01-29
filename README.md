@@ -1,11 +1,13 @@
 # TorqERP
-TorqERP is my final project to graduate, it's meant to be a fairly lightweight yet complete ERP oriented to the automobile industry
+TorqERP TorqERP is my final graduation project, i intend for it to be a lightweight ERP tailored for the automotive industry.
 
-For the backend I've decided to use Node.js/express because it's the technology I'm most familiarized with I believe it's fairly simple to get the bare minimum done (JWT's for security, bcrypt for passwords).
+I am using .NET MAUI Blazor for the frontend and Node.js for the backend. I decided this "hybrid" architecture was better suited for my needs instead of sticking to the Microsoft ecosystem because of my already existing experience with Node.js APIs. As for the frontend, I am fairly proficient with C# for the logic, and the MAUI framework allows me to use web components.
 
-For the frontend I'm going to use .NET MAUI, I'm very used to C#/.NET as a whole and I'm using Razor for the UI because it allows me to have web components for styling the pages.
+It currently has at least core functionalities (Auth and containerization) though the DB Prisma schema only has users at the moment cause I'm rethinking my initial design.
 
-I will use PostgreSQL for the database, it's a very solid relational system and for an ERP it is integral to have a relational system.
+Docker instructions:
 
-AuthState for login auth in frontend
-
+Build the container
+- docker compose up --build -d
+Injecting prisma schema
+- docker exec -it torq_api npx prisma db push
