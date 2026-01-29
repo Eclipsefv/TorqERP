@@ -12,3 +12,6 @@ api-backend/dist/
 [Oo]bj/
 *.user
 *.suo
+
+.vs/
+*.vsidx

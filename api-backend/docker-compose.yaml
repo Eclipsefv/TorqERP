@@ -14,6 +14,24 @@ services:
     networks:
       - torq-network
 
+  torq-api:
+    build: .
+    container_name: torq_api
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@torq-db:5432/${POSTGRES_DB}?schema=public
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=3000
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - torq-db
+    networks:
+      - torq-network
+
 networks:
   torq-network:
     driver: bridge

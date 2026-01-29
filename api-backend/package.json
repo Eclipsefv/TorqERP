@@ -6,7 +6,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "node -r dotenv/config --loader ts-node/esm src/index.ts"
+    "dev": "tsx watch src/index.ts"
+    
   },
   "keywords": [],
   "author": "",
@@ -34,4 +35,5 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
+  
 }

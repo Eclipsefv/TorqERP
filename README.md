@@ -8,3 +8,4 @@ For the frontend I'm going to use .NET MAUI, I'm very used to C#/.NET as a whole
 I will use PostgreSQL for the database, it's a very solid relational system and for an ERP it is integral to have a relational system.
 
 AuthState for login auth in frontend
+
