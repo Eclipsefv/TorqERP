@@ -10,4 +10,5 @@ Docker instructions:
 Build the container
 - docker compose up --build -d
 Injecting prisma schema
-- docker exec -it torq_api npx prisma db push
+docker exec torq_api npx prisma generate
+docker exec torq_api npx prisma db push
