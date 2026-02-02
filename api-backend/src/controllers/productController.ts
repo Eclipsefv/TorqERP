@@ -36,3 +36,20 @@ export const insertProduct = async (req: Request, res: Response) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const getProducts = async (req: Request, res: Response) => {
+  try {
+    const products = await prisma.product.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return res.status(200).json(products);
+  } catch (error: any) {
+    res.status(500).json({ 
+      message: "Error al obtener los productos", 
+      error: error.message 
+    });
+  }
+};

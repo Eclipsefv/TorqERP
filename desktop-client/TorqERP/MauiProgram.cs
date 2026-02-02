@@ -3,6 +3,8 @@ using MudBlazor.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using TorqERP.Services;
 
+using Uri = System.Uri;
+
 namespace TorqERP
 {
     public static class MauiProgram
@@ -23,10 +25,7 @@ namespace TorqERP
             builder.Services.AddMudServices();
 
             // 2.HttpClient
-            builder.Services.AddScoped(sp => new HttpClient
-            {
-                BaseAddress = new Uri("http://localhost:3000/")
-            });
+            const string BaseUrl = "http://localhost:3000/";
 
             // 3.Autentication
             builder.Services.AddAuthorizationCore();
@@ -39,10 +38,22 @@ namespace TorqERP
                 sp.GetRequiredService<SimpleAuthStateProvider>());
 
             //auth logic servuce
-            builder.Services.AddScoped<AuthService>();
+            builder.Services.AddHttpClient<AuthService>(client =>
+            {
+                client.BaseAddress = new Uri(BaseUrl);
+            });
 
             //style
             builder.Services.AddSingleton<TorqThemeService>();
+
+            //API Handling (bearers for token auth)
+            builder.Services.AddTransient<TokenHandler>();
+            builder.Services.AddHttpClient<ApiService>(client =>
+            {
+                client.BaseAddress = new Uri(BaseUrl);
+            })
+            .AddHttpMessageHandler<TokenHandler>();
+
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
