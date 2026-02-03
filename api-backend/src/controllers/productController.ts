@@ -10,7 +10,7 @@ export const insertProduct = async (req: Request, res: Response) => {
     } = req.body;
 
     if (!sku || !name) {
-      return res.status(400).json({ message: "sku and name are reequired" });
+      return res.status(400).json({ message: "sku and name are required" });
     }
 
     const newProduct = await prisma.product.create({
@@ -41,14 +41,14 @@ export const getProducts = async (req: Request, res: Response) => {
   try {
     const products = await prisma.product.findMany({
       orderBy: {
-        createdAt: 'desc',
+        updatedAt: 'desc',
       },
     });
 
     return res.status(200).json(products);
   } catch (error: any) {
     res.status(500).json({ 
-      message: "Error al obtener los productos", 
+      message: "Error obtaining products", 
       error: error.message 
     });
   }

@@ -1,0 +1,82 @@
+﻿@page "/users"
+@using TorqERP.Services
+@using TorqERP.DataModels
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "ADMIN")]
+@inject ApiService ApiService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-4" Color="Color.Primary">User Management</MudText>
+
+<MudTable Items="@_users" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading"
+          LoadingProgressColor="Color.Info" Filter="new Func<User,bool>(FilterFunc1)">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">System users</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="_searchString" Placeholder="Search by email or role"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Email</MudTh>
+        <MudTh>Role</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Email">@context.Email</MudTd>
+            <MudTd DataLabel="Role">
+                <MudChip T="string" Color="@(context.Role == UserRole.ADMIN ? Color.Error : Color.Info)" Size="Size.Small">
+                    @context.Role.ToString()
+                </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Acciones">
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" />
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager InfoFormat="{first_item}-{last_item} de {all_items}" RowsPerPageString="Rows p page:" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private bool _loading = true;
+    private string _searchString = "";
+    private List<User> _users = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        _loading = true;
+        try
+        {
+            _users = await ApiService.GetUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error loading users: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private bool FilterFunc1(User user) => FilterFunc(user, _searchString);
+
+    private bool FilterFunc(User user, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString)) return true;
+
+        if (user.Email.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+
+        if (user.Role.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+
+        return false;
+    }
+
+}

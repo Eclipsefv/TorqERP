@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 //Router imports
 import authRouter from './routes/authRouter.js';
 import productRouter from './routes/productRouter.js';
+import userRouter from './routes/userRouter.js';
 
 dotenv.config();
 
@@ -19,6 +20,9 @@ app.use('/api/auth', authRouter);
 
 //products
 app.use('/api/products', productRouter);
+
+//users
+app.use('/api/users', userRouter);
 
 //health check
 app.get('/', (req, res) => {

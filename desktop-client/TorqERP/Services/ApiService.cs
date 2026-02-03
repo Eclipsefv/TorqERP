@@ -18,6 +18,9 @@ namespace TorqERP.Services
             _httpClient = httpClient;
         }
 
+        /*
+         * Receives the Product class
+         */
         public async Task<List<Product>> GetProductsAsync()
         {
             try
@@ -38,6 +41,31 @@ namespace TorqERP.Services
             }
         }
 
+        /*
+         * Receives User Class
+         */
+
+        public async Task<List<User>> GetUsersAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("api/users/getUsers");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadFromJsonAsync<List<User>>() ?? new List<User>();
+                }
+
+                return new List<User>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
+                return new List<User>();
+            }
+        }
+
+        //Test Functions
         public async Task<string> TestProductsLogAsync()
         {
             try
