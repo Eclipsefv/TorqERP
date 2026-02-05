@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.Json.Serialization;
 
 namespace TorqERP.DataModels
 {
@@ -39,6 +40,7 @@ namespace TorqERP.DataModels
         public DateTime UpdatedAt { get; set; }
     }
 
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum ProductType
     {
         ITEM,
