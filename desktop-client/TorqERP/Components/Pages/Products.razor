@@ -1,0 +1,126 @@
+﻿@page "/inventory"
+@using System.Globalization
+@using TorqERP.Services
+@using TorqERP.DataModels
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject ApiService ApiService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-4" Color="Color.Primary">Inventory Management</MudText>
+<MudTable Items="@_products"
+          Hover="true"
+          Breakpoint="Breakpoint.Sm"
+          Loading="@_loading"
+          LoadingProgressColor="Color.Info"
+          Filter="new Func<Product,bool>(FilterFunc1)"
+          Dense="true"
+          Striped="true">
+
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Product List</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="_searchString"
+                      Placeholder="Search by SKU or Name"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium"
+                      Class="mt-0" />
+    </ToolBarContent>
+
+    <HeaderContent>
+        <MudTh>SKU</MudTh>
+        <MudTh>Name</MudTh>
+        <MudTh>Type</MudTh>
+        <MudTh>Sell Price</MudTh>
+        <MudTh>Stock</MudTh>
+        <MudTh>Location</MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="SKU">
+            <MudText Typo="Typo.body2" Color="Color.Default"><b>@context.Sku</b></MudText>
+        </MudTd>
+
+        <MudTd DataLabel="Name">@context.Name</MudTd>
+
+            <MudTd DataLabel="Type">
+                <MudChip T="string" Variant="Variant.Text"
+                         Color="@(context.Type == ProductType.SERVICE ? Color.Secondary : Color.Primary)"
+                         Size="Size.Small">
+                    @context.Type.ToString()
+            </MudChip>
+        </MudTd>
+
+        <MudTd DataLabel="Sell Price">
+            @context.SellPrice.ToString("C", _euroCulture)
+        </MudTd>
+        @*Stock typw colours*@
+        <MudTd DataLabel="Stock">
+            @if (context.Stock <= context.MinStock && context.Type == ProductType.ITEM)
+            {
+                <MudText Color="Color.Error" Typo="Typo.body2">
+                    <b>@context.Stock</b> (Low Stock)
+                </MudText>
+            }
+            else
+            {
+                @context.Stock
+            }
+        </MudTd>
+
+        <MudTd DataLabel="Location">
+            @(string.IsNullOrEmpty(context.Location) ? "N/A" : context.Location)
+        </MudTd>
+    </RowTemplate>
+
+    <PagerContent>
+        <MudTablePager InfoFormat="{first_item}-{last_item} of {all_items}" RowsPerPageString="Rows per page:" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private bool _loading = true;
+    private string _searchString = "";
+    private List<Product> _products = new();
+
+    //this is to force everything to be in euros, if left default it would use your system's language's currency, mine is in english so I had to look up how to do this cause it kept showing all prices in GBP
+    private readonly CultureInfo _euroCulture = CultureInfo.GetCultureInfo("es-ES");
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        _loading = true;
+        try
+        {
+            _products = await ApiService.GetProductsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error loading products: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private bool FilterFunc1(Product product) => FilterFunc(product, _searchString);
+
+    private bool FilterFunc(Product product, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString)) return true;
+
+        if (product.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+
+        if (product.Sku.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+
+        if (!string.IsNullOrEmpty(product.Location) && product.Location.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+
+        return false;
+    }
+}

@@ -1,0 +1,17 @@
+﻿
+html, body {
+    background-color: transparent !important;
+}
+
+.mud-layout, .mud-main-content {
+    background-color: var(--mud-palette-background) !important;
+    min-height: 100vh;
+}
+
+.mud-typography {
+    color: var(--mud-palette-text-primary);
+}
+.mud-main-content, .mud-layout, .page {
+    background-color: #1a1a27 !important;
+    transition: none !important;
+}

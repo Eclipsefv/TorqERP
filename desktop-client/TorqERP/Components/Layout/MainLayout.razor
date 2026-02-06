@@ -1,0 +1,47 @@
+﻿@inherits LayoutComponentBase
+@using TorqERP.Services
+@inject TorqThemeService ThemeService
+
+<MudThemeProvider IsDarkMode="true" Theme="ThemeService.Theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<style>
+    .mud-layout, .mud-main-content, .mud-container {
+        background-color: #1a1a27 !important;
+    }
+</style>
+
+<MudLayout>
+    <MudAppBar Elevation="1" Color="Color.Primary">
+
+        <MudText Typo="Typo.h6" Class="ml-3">TorqERP</MudText>
+
+        <MudSpacer />
+        <MudTooltip Text="Cerrar Sesión">
+            <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" OnClick="HandleLogout" />
+        </MudTooltip>
+    </MudAppBar>
+
+    <MudDrawer Open="true" ClipMode="DrawerClipMode.Always" Elevation="2" Variant="@DrawerVariant.Responsive">
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="my-4 pt-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    @inject AuthService AuthService
+    @inject NavigationManager NavManager
+
+    private async Task HandleLogout()
+    {
+        await AuthService.Logout();
+        NavManager.NavigateTo("/login");
+    }
+}

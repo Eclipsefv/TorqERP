@@ -1,0 +1,36 @@
+﻿@inject AuthService AuthService
+@inject NavigationManager NavManager
+
+<MudNavMenu>
+    <div class="pa-4">
+        <MudText Typo="Typo.h6" Color="Color.Primary" Style="font-weight: bold">Menu</MudText>
+    </div>
+
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+
+    <MudNavGroup Title="Utils" Icon="@Icons.Material.Filled.Build">
+        <MudNavLink Href="/inventory" Icon="@Icons.Material.Filled.AutoAwesomeMotion">Inventario</MudNavLink>
+    </MudNavGroup>
+
+    <AuthorizeView Roles="ADMIN">
+        <Authorized>
+            <MudNavGroup Title="Management" Icon="@Icons.Material.Filled.Settings">
+                <MudNavLink Href="/users" Icon="@Icons.Material.Filled.People">User Management</MudNavLink>
+            </MudNavGroup>
+        </Authorized>
+    </AuthorizeView>
+
+    <MudNavLink Href="/perfil" Icon="@Icons.Material.Filled.Person">My profile</MudNavLink>
+
+    <MudDivider Class="my-2" />
+
+    <MudNavLink OnClick="HandleLogout" Icon="@Icons.Material.Filled.Logout" IconColor="Color.Error">Log Out</MudNavLink>
+</MudNavMenu>
+
+@code {
+    private async Task HandleLogout()
+    {
+        await AuthService.Logout();
+        NavManager.NavigateTo("/login");
+    }
+}

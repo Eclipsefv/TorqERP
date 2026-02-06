@@ -1,0 +1,153 @@
+﻿@page "/users"
+@using TorqERP.Services
+@using TorqERP.DataModels
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "ADMIN")]
+@inject ApiService ApiService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-4" Color="Color.Primary">User Management</MudText>
+
+<MudTable Items="@_users" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading"
+          LoadingProgressColor="Color.Info" Filter="new Func<User,bool>(FilterFunc1)">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">System users</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenCreateDialog" Class="mr-4">New User</MudButton>
+
+        <MudTextField @bind-Value="_searchString" Placeholder="Search by email or role"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium" Class="mt-0"></MudTextField>
+    </ToolBarContent>
+    <HeaderContent>
+        <MudTh>Email</MudTh>
+        <MudTh>Username</MudTh>
+        <MudTh>Role</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Email">@context.Email</MudTd>
+            <MudTd DataLabel="Username">@context.Username</MudTd>
+            <MudTd DataLabel="Role">
+                <MudChip T="string"
+                         Color="@(context.Role == UserRole.ADMIN ? Color.Error :
+                         context.Role == UserRole.MANAGER ? Color.Warning : Color.Info)"
+                         Size="Size.Small">
+                         @context.Role.ToString()
+                </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Acciones">
+            <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" />
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager InfoFormat="{first_item}-{last_item} de {all_items}" RowsPerPageString="Rows p page:" />
+    </PagerContent>
+</MudTable>
+
+@*Dialog for user creation*@
+<MudDialog @bind-Visible="_isDialogVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Class="mr-3" /> Create New User
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField T="string" Label="Email" @bind-Value="_newUser.Email" Required="true"
+                      InputType="InputType.Email" Variant="Variant.Outlined" Class="mb-3" />
+
+        <MudTextField T="string" Label="Username" @bind-Value="_newUser.Username" Required="true"
+                      Variant="Variant.Outlined" Class="mb-3" />
+
+        <MudTextField T="string" Label="Password" @bind-Value="_newUser.Password" Required="true"
+                      InputType="InputType.Password" Variant="Variant.Outlined" Class="mb-3" />
+
+        <MudSelect T="UserRole" Label="Role" @bind-Value="_newUser.Role" Variant="Variant.Outlined">
+            @foreach (UserRole role in Enum.GetValues(typeof(UserRole)))
+            {
+                <MudSelectItem Value="@role">@role.ToString()</MudSelectItem>
+            }
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Default" OnClick="CloseDialog" Class="px-10">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateUser" Class="px-10">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    
+    private bool _loading = true;
+    private string _searchString = "";
+    private List<User> _users = new();
+
+    //dialog variables
+    private bool _isDialogVisible;
+    private User _newUser = new();
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        _loading = true;
+        try
+        {
+            _users = await ApiService.GetUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error loading users: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OpenCreateDialog()
+    {
+        //default role in api is user still, but just in case I make sure here too.
+        _newUser = new User { Role = UserRole.USER };
+        _isDialogVisible = true;
+    }
+
+    private void CloseDialog() => _isDialogVisible = false;
+
+    private async Task CreateUser()
+    {
+        if (string.IsNullOrEmpty(_newUser.Email) || string.IsNullOrEmpty(_newUser.Password))
+        {
+            Snackbar.Add("Email and/or Password are required", Severity.Warning);
+            return;
+        }
+
+        var result = await ApiService.CreateUserAsync(_newUser);
+
+        if (result)
+        {
+            Snackbar.Add("User created successfully", Severity.Success);
+            _isDialogVisible = false;
+            await LoadUsers();
+        }
+        else
+        {
+            Snackbar.Add("Failure in user creation", Severity.Error);
+        }
+    }
+
+    private bool FilterFunc1(User user) => FilterFunc(user, _searchString);
+
+    private bool FilterFunc(User user, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString)) return true;
+        if (user.Email.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+        if (user.Role.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+}

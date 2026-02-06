@@ -1,0 +1,18 @@
+﻿@inherits LayoutComponentBase
+@using TorqERP.Services
+@inject TorqThemeService ThemeService
+
+<MudThemeProvider IsDarkMode="true" Theme="ThemeService.Theme" /> @*Dark theme on login *@
+<MudDialogProvider />
+<MudSnackbarProvider />
+<MudPopoverProvider />
+
+<MudLayout>
+    <MudMainContent>
+        @*Center login content*@
+        <div class="d-flex align-center justify-center" style="height: 100vh; width: 100%;">
+            @Body
+        </div>
+    </MudMainContent>
+</MudLayout>
+

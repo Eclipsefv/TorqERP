@@ -1,0 +1,39 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using TorqERP.Components.Layout
+@using TorqERP.Components
+@inject NavigationManager NavManager
+
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(MauiProgram).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(TorqLayout)">
+                <NotAuthorized>
+                    @if (!context.User.Identity.IsAuthenticated)
+                    {
+                        @* Redirecting component *@
+                        <RedirectToLogin />
+                    }
+                    else
+                    {
+                        <LayoutView Layout="@typeof(TorqLayout)">
+                            <MudContainer Class="mt-16">
+                                <MudAlert Severity="Severity.Error" Variant="Variant.Filled" ContentAlignment="HorizontalAlignment.Center">
+                                    No tienes permisos suficientes.
+                                </MudAlert>
+                            </MudContainer>
+                        </LayoutView>
+                    }
+                </NotAuthorized>
+                <Authorizing>
+                    <MudText Align="Align.Center" Class="mt-16">Validando credenciales...</MudText>
+                </Authorizing>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(TorqLayout)">
+                <MudAlert Severity="Severity.Error">Página no encontrada.</MudAlert>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

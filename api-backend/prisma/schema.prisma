@@ -1,0 +1,46 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  USER
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  username      String   @unique
+  password      String  
+  role          Role     @default(USER)
+  creation_date DateTime @default(now())
+  last_login    DateTime @updatedAt
+}
+
+enum ProductType {
+  ITEM
+  SERVICE
+}
+
+model Product {
+  id            Int         @id @default(autoincrement())
+  sku           String      @unique
+  name          String
+  description   String?
+  type          ProductType @default(ITEM)
+  buyPrice      Decimal     @default(0.0)
+  sellPrice     Decimal     @default(0.0)
+  taxRate       Decimal     @default(21.0)
+//only if physical item
+  stock         Float?      @default(0)
+  minStock      Float?      @default(0)
+  location      String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
