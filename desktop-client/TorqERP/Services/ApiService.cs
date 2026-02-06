@@ -99,6 +99,23 @@ namespace TorqERP.Services
             }
         }
 
+        //deactivate user
+        public async Task<bool> DeleteUserAsync(int userId)
+        {
+            try
+            {
+                var response = await _httpClient.DeleteAsync($"api/users/deleteUserById/{userId}");
+
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error on user deactivation: {ex.Message}");
+                return false;
+            }
+        }
+
+
 
         //testing functions
         public async Task<string> TestProductsLogAsync()

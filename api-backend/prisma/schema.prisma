@@ -19,6 +19,7 @@ model User {
   username      String   @unique
   password      String  
   role          Role     @default(USER)
+  active        Boolean  @default(true)
   creation_date DateTime @default(now())
   last_login    DateTime @updatedAt
 }

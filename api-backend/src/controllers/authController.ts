@@ -9,7 +9,12 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     const { email, password, username, role } = req.body; 
     
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already on DB" });
+    }
+
     const user = await prisma.user.create({
       data: { 
         email, 

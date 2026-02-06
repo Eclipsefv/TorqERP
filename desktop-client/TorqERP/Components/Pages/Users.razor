@@ -5,6 +5,7 @@
 @attribute [Authorize(Roles = "ADMIN")]
 @inject ApiService ApiService
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <MudText Typo="Typo.h4" Class="mb-4" Color="Color.Primary">User Management</MudText>
 
@@ -39,7 +40,10 @@
         </MudTd>
         <MudTd DataLabel="Acciones">
             <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" />
-            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                           Color="Color.Error"
+                           Size="Size.Small"
+                           OnClick="@(() => DeleteUser(context))" />
         </MudTd>
     </RowTemplate>
     <PagerContent>
@@ -138,6 +142,29 @@
         else
         {
             Snackbar.Add("Failure in user creation", Severity.Error);
+        }
+    }
+
+    private async Task DeleteUser(User user)
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "IMPORTANT",
+            $"You are going to deactivate {user.Username} proceed?",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (result == true)
+        {
+            var success = await ApiService.DeleteUserAsync(user.Id);
+
+            if (success)
+            {
+                Snackbar.Add("User deactivated succesfully", Severity.Success);
+                await LoadUsers();
+            }
+            else
+            {
+                Snackbar.Add("Error on deactivation", Severity.Error);
+            }
         }
     }
 
