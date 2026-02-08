@@ -23,11 +23,13 @@
         <MudSpacer />
 
         @*test button products json*@
-        <MudTooltip Text="Testing product api">
-            <MudIconButton Icon="@Icons.Material.Filled.BugReport"
-                           Color="Color.Inherit"
-                           OnClick="HandleTestApi" />
-        </MudTooltip>
+        <AuthorizeView Roles="ADMIN">
+            <MudTooltip Text="Testing product api">
+                <MudIconButton Icon="@Icons.Material.Filled.BugReport"
+                               Color="Color.Inherit"
+                               OnClick="HandleTestApi" />
+            </MudTooltip>
+        </AuthorizeView>
 
         <MudTooltip Text="Logout">
             <MudIconButton Icon="@Icons.Material.Filled.Logout"

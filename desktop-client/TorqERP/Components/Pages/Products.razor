@@ -26,6 +26,19 @@
                       AdornmentIcon="@Icons.Material.Filled.Search"
                       IconSize="Size.Medium"
                       Class="mt-0" />
+        
+        <MudText Typo="Typo.h6">Product List</MudText>
+        <MudSpacer />
+        
+        <MudButton Variant="Variant.Filled" 
+                   StartIcon="@Icons.Material.Filled.Add" 
+                   Color="Color.Primary" 
+                   OnClick="OpenCreateDialog" 
+                   Class="mr-4">
+            Add Product
+        </MudButton>
+
+        <MudTextField @bind-Value="_searchString" ... />
     </ToolBarContent>
 
     <HeaderContent>
@@ -79,10 +92,72 @@
     </PagerContent>
 </MudTable>
 
+@*dialog for product creation*@
+<MudDialog @bind-Visible="_isDialogVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.AddCircleOutline" Class="mr-3" /> Create Product (Wild West Style 🤠)
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="SKU" @bind-Value="_newProduct.Sku" Required="true" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Name" @bind-Value="_newProduct.Name" Required="true" Variant="Variant.Outlined" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudSelect T="ProductType" Label="Type" Variant="Variant.Outlined" @bind-Value="_newProduct.Type" AnchorOrigin="Origin.BottomCenter">
+                    @foreach (ProductType type in Enum.GetValues(typeof(ProductType)))
+                    {
+                        <MudSelectItem Value="@type">@type</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Location" @bind-Value="_newProduct.Location" Variant="Variant.Outlined" />
+            </MudItem>
+
+            <MudItem xs="12" sm="4">
+                <MudNumericField @bind-Value="_newProduct.BuyPrice" Label="Buy Price" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudNumericField @bind-Value="_newProduct.SellPrice" Label="Sell Price" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudNumericField @bind-Value="_newProduct.TaxRate" Label="Tax %" Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentText="%" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudNumericField @bind-Value="_newProduct.Stock" Label="Stock" Variant="Variant.Outlined" Min="0" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudNumericField @bind-Value="_newProduct.MinStock" Label="Min Stock" Variant="Variant.Outlined" Min="0" />
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudTextField T="string" Label="Description" @bind-Value="_newProduct.Description" Variant="Variant.Outlined" Lines="3" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateProduct">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
 @code {
     private bool _loading = true;
     private string _searchString = "";
     private List<Product> _products = new();
+
+    //dialog variables
+    private bool _isDialogVisible;
+    private Product _newProduct = new();
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
 
     //this is to force everything to be in euros, if left default it would use your system's language's currency, mine is in english so I had to look up how to do this cause it kept showing all prices in GBP
     private readonly CultureInfo _euroCulture = CultureInfo.GetCultureInfo("es-ES");
@@ -91,6 +166,14 @@
     {
         await LoadProducts();
     }
+
+    private void OpenCreateDialog()
+    {
+        _newProduct = new Product { Type = ProductType.ITEM };
+        _isDialogVisible = true;
+    }
+
+    private void CloseDialog() => _isDialogVisible = false;
 
     private async Task LoadProducts()
     {
@@ -106,6 +189,46 @@
         finally
         {
             _loading = false;
+        }
+    }
+
+    private async Task CreateProduct()
+    {
+        if (string.IsNullOrWhiteSpace(_newProduct.Sku))
+        {
+            Snackbar.Add("SKU Missing.", Severity.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_newProduct.Name))
+        {
+            Snackbar.Add("Error unnamed product", Severity.Warning);
+            return;
+        }
+
+        if (_newProduct.SellPrice < 0)
+        {
+            Snackbar.Add("Selling price cant be lower than cost", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var createdProduct = await ApiService.CreateProductAsync(_newProduct);
+
+            if (createdProduct == true)
+            {
+                await LoadProducts();
+                CloseDialog();
+            }
+            else
+            {
+                Snackbar.Add("Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
     }
 
