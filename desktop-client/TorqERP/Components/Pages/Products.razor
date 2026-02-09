@@ -15,7 +15,8 @@
           LoadingProgressColor="Color.Info"
           Filter="new Func<Product,bool>(FilterFunc1)"
           Dense="true"
-          Striped="true">
+          OnRowClick="@((TableRowClickEventArgs<Product> args) => OnRowClick(args))"
+          RowClass="cursor-pointer">
 
     <ToolBarContent>
         <MudText Typo="Typo.h6">Product List</MudText>
@@ -29,16 +30,6 @@
         
         <MudText Typo="Typo.h6">Product List</MudText>
         <MudSpacer />
-        
-        <MudButton Variant="Variant.Filled" 
-                   StartIcon="@Icons.Material.Filled.Add" 
-                   Color="Color.Primary" 
-                   OnClick="OpenCreateDialog" 
-                   Class="mr-4">
-            Add Product
-        </MudButton>
-
-        <MudTextField @bind-Value="_searchString" ... />
     </ToolBarContent>
 
     <HeaderContent>
@@ -96,7 +87,7 @@
 <MudDialog @bind-Visible="_isDialogVisible" Options="_dialogOptions">
     <TitleContent>
         <MudText Typo="Typo.h6">
-            <MudIcon Icon="@Icons.Material.Filled.AddCircleOutline" Class="mr-3" /> Create Product (Wild West Style 🤠)
+            <MudIcon Icon="@Icons.Material.Filled.AddCircleOutline" Class="mr-3" /> Create Product
         </MudText>
     </TitleContent>
     <DialogContent>
@@ -149,6 +140,7 @@
 </MudDialog>
 
 @code {
+
     private bool _loading = true;
     private string _searchString = "";
     private List<Product> _products = new();
@@ -192,6 +184,8 @@
         }
     }
 
+    //crud
+
     private async Task CreateProduct()
     {
         if (string.IsNullOrWhiteSpace(_newProduct.Sku))
@@ -231,6 +225,14 @@
             Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
     }
+
+    private void OnRowClick(TableRowClickEventArgs<Product> args)
+    {
+
+        _isDialogVisible = true;
+    }
+
+    //filters
 
     private bool FilterFunc1(Product product) => FilterFunc(product, _searchString);
 
