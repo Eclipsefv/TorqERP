@@ -70,6 +70,39 @@ namespace TorqERP.Services
             }
         }
 
+        public async Task<bool> UpdateProductAsync(Product updatedProduct)
+        {
+            try
+            {
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                };
+
+                if (string.IsNullOrEmpty(updatedProduct.Id.ToString()) || updatedProduct.Id == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("Error, product id null");
+                    return false;
+                }
+
+                string url = $"/api/products/updateProduct/{updatedProduct.Id}";
+
+                var response = await _httpClient.PutAsJsonAsync(url, updatedProduct, options);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return true;
+                }
+                var errorBody = await response.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"Error response from api: {errorBody}");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error on update: {ex.Message}");
+                return false;
+            }
+        }
 
         //user functions
         /*

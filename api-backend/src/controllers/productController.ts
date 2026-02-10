@@ -53,3 +53,49 @@ export const getProducts = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const updateProduct = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params; 
+    
+    const { 
+      sku, name, description, type, 
+      buyPrice, sellPrice, taxRate, 
+      stock, minStock, location 
+    } = req.body;
+    if (!id) {
+      return res.status(400).json({ message: "Product ID is required in params" });
+    }
+
+    const updatedProduct = await prisma.product.update({
+      where: {
+        id: Number(id),
+      },
+      data: {
+        sku,
+        name,
+        description,
+        type,
+        buyPrice,
+        sellPrice,
+        taxRate,
+        stock,
+        minStock,
+        location,
+      },
+    });
+
+    res.status(200).json(updatedProduct);
+
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    
+    if (error.code === 'P2002') {
+      return res.status(400).json({ message: "The new sku is already in use" });
+    }
+
+    res.status(500).json({ error: error.message });
+  }
+};
