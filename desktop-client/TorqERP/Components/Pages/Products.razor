@@ -15,7 +15,8 @@
           LoadingProgressColor="Color.Info"
           Filter="new Func<Product,bool>(FilterFunc1)"
           Dense="true"
-          Striped="true">
+          OnRowClick="@((TableRowClickEventArgs<Product> args) => OnRowClick(args))"
+          RowClass="cursor-pointer">
 
     <ToolBarContent>
         <MudText Typo="Typo.h6">Product List</MudText>
@@ -26,6 +27,9 @@
                       AdornmentIcon="@Icons.Material.Filled.Search"
                       IconSize="Size.Medium"
                       Class="mt-0" />
+        
+        <MudText Typo="Typo.h6">Product List</MudText>
+        <MudSpacer />
     </ToolBarContent>
 
     <HeaderContent>
@@ -79,10 +83,75 @@
     </PagerContent>
 </MudTable>
 
+@*dialog for product creation, added capability to edit from this same form*@
+<MudDialog @bind-Visible="_isDialogVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@(_isEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.AddCircleOutline)" Class="mr-3" />
+            @(_isEditMode ? $"Edit Product: {_currentProduct.Sku}" : "Create Product")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12" sm="6">a
+                @*blocks sku on edit just in case some user tries to edit it*@
+                <MudTextField T="string" Label="SKU" @bind-Value="_currentProduct.Sku" Required="true" Variant="Variant.Outlined" Disabled="@_isEditMode" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Name" @bind-Value="_currentProduct.Name" Required="true" Variant="Variant.Outlined" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudSelect T="ProductType" Label="Type" Variant="Variant.Outlined" @bind-Value="_currentProduct.Type" AnchorOrigin="Origin.BottomCenter">
+                    @foreach (ProductType type in Enum.GetValues(typeof(ProductType)))
+                    {
+                        <MudSelectItem Value="@type">@type</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Location" @bind-Value="_currentProduct.Location" Variant="Variant.Outlined" />
+            </MudItem>
+
+            <MudItem xs="12" sm="4">
+                <MudNumericField @bind-Value="_currentProduct.BuyPrice" Label="Buy Price" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudNumericField @bind-Value="_currentProduct.SellPrice" Label="Sell Price" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudNumericField @bind-Value="_currentProduct.TaxRate" Label="Tax %" Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentText="%" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudNumericField @bind-Value="_currentProduct.Stock" Label="Stock" Variant="Variant.Outlined" Min="0" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudNumericField @bind-Value="_currentProduct.MinStock" Label="Min Stock" Variant="Variant.Outlined" Min="0" />
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudTextField T="string" Label="Description" @bind-Value="_currentProduct.Description" Variant="Variant.Outlined" Lines="3" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveProduct">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
 @code {
+
     private bool _loading = true;
     private string _searchString = "";
     private List<Product> _products = new();
+
+    //dialog variables
+    private bool _isDialogVisible;
+    private Product _currentProduct = new();
+    private bool _isEditMode = false;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
 
     //this is to force everything to be in euros, if left default it would use your system's language's currency, mine is in english so I had to look up how to do this cause it kept showing all prices in GBP
     private readonly CultureInfo _euroCulture = CultureInfo.GetCultureInfo("es-ES");
@@ -91,6 +160,15 @@
     {
         await LoadProducts();
     }
+
+    private void OpenCreateDialog()
+    {
+        _isEditMode = false;
+        _currentProduct = new Product { Type = ProductType.ITEM };
+        _isDialogVisible = true;
+    }
+
+    private void CloseDialog() => _isDialogVisible = false;
 
     private async Task LoadProducts()
     {
@@ -109,6 +187,103 @@
         }
     }
 
+    //crud
+
+    private async Task SaveProduct()
+    {
+        if (string.IsNullOrWhiteSpace(_currentProduct.Name))
+        {
+            Snackbar.Add("Error unnamed product", Severity.Warning);
+            return;
+        }
+
+        if (_isEditMode)
+        {
+            await UpdateProductLogic();
+        }
+        else
+        {
+            await CreateProductLogic();
+        }
+    }
+
+    private async Task CreateProductLogic()
+    {
+        if (string.IsNullOrWhiteSpace(_currentProduct.Sku))
+        {
+            Snackbar.Add("SKU Missing.", Severity.Warning);
+            return;
+        }
+
+        if (_currentProduct.SellPrice < 0)
+        {
+            Snackbar.Add("Selling price cant be lower than cost", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var success = await ApiService.CreateProductAsync(_currentProduct);
+
+            if (success)
+            {
+                await LoadProducts();
+                CloseDialog();
+            }
+            else
+            {
+                Snackbar.Add("Error");
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task UpdateProductLogic()
+    {
+        try
+        {
+            var success = await ApiService.UpdateProductAsync(_currentProduct);
+
+            if (success)
+            {
+                await LoadProducts();
+                CloseDialog();
+            }
+            else
+            {
+                Snackbar.Add("Error updating product");
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OnRowClick(TableRowClickEventArgs<Product> args)
+    {
+        _isEditMode = true;
+        _currentProduct = new Product
+            {
+                Id = args.Item.Id,
+                Sku = args.Item.Sku,
+                Name = args.Item.Name,
+                Type = args.Item.Type,
+                Location = args.Item.Location,
+                BuyPrice = args.Item.BuyPrice,
+                SellPrice = args.Item.SellPrice,
+                TaxRate = args.Item.TaxRate,
+                Stock = args.Item.Stock,
+                MinStock = args.Item.MinStock,
+                Description = args.Item.Description
+            };
+        _isDialogVisible = true;
+    }
+
+    //filters
     private bool FilterFunc1(Product product) => FilterFunc(product, _searchString);
 
     private bool FilterFunc(Product product, string searchString)
