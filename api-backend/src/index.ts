@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import authRouter from './routes/authRouter.js';
 import productRouter from './routes/productRouter.js';
 import userRouter from './routes/userRouter.js';
+import customerRouter from './routes/customerRouter.js';
 
 dotenv.config();
 
@@ -23,6 +24,9 @@ app.use('/api/products', productRouter);
 
 //users
 app.use('/api/users', userRouter);
+
+//customers
+app.use('/api/customers', customerRouter)
 
 //health check
 app.get('/', (req, res) => {
