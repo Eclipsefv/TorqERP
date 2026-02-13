@@ -175,8 +175,6 @@ namespace TorqERP.Services
             }
         }
 
-
-
         //testing functions
         public async Task<string> TestProductsLogAsync()
         {
@@ -199,6 +197,35 @@ namespace TorqERP.Services
             {
                 System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
                 return ex.Message;
+            }
+        }
+
+        //Customer functions
+        public async Task<bool> CreateCustomerAsync(Customer newCustomer)
+        {
+            try
+            {
+                //I have to do this because my API follows camelcase convention standard so in my data model in C# its "Email" But in my API i use "email"
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                };
+
+                var response = await _httpClient.PostAsJsonAsync("/api/customers/insert", newCustomer, options);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return true;
+                }
+
+                var errorBody = await response.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"Error response from API: {errorBody}");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
+                return false;
             }
         }
     }
