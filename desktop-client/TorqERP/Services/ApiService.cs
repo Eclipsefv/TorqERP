@@ -228,5 +228,24 @@ namespace TorqERP.Services
                 return false;
             }
         }
+        public async Task<List<Customer>> GetCustomersAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("api/customers/getCustomers");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadFromJsonAsync<List<Customer>>() ?? new List<Customer>();
+                }
+
+                return new List<Customer>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
+                return new List<Customer>();
+            }
+        }
     }
 }
