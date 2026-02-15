@@ -3,14 +3,14 @@ import { prisma } from '../config/db.js';
 
 //create customer
 export const createCustomer = async (req: Request, res: Response) => {
-  const { nif, name, adress, phonenumber, email } = req.body;
+  const { nif, name, address, phonenumber, email } = req.body;
   
   try {
     const newCustomer = await prisma.customer.create({
       data: {
         nif,
         name,
-        adress,
+        address,
         phonenumber,
         email
       },
@@ -38,5 +38,20 @@ export const getCustomerById = async (req: Request, res: Response) => {
     return res.status(200).json(customer);
   } catch (error: any) {
     res.status(500).json({ message: "Error obtaining customer", error: error.message });
+  }
+};
+
+export const getCustomers = async (req: Request, res: Response) => {
+  try {
+    const customers = await prisma.customer.findMany({
+      // include: { vehicles: true } 
+    });
+
+    return res.status(200).json(customers);
+  } catch (error: any) {
+    res.status(500).json({ 
+      message: "Error obtaining customers", 
+      error: error.message 
+    });
   }
 };

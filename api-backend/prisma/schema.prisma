@@ -50,7 +50,7 @@ model Customer {
   id           Int       @id @default(autoincrement())
   nif          String    @unique
   name String
-  adress    String?
+  address    String?
   phonenumber     String?
   email        String?   @unique
   vehicles     Vehicle[]

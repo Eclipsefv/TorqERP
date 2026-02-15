@@ -20,7 +20,7 @@ namespace TorqERP.DataModels
         [Required]
         public string Name { get; set; } = string.Empty;
 
-        public string? Adress { get; set; }
+        public string? Address { get; set; }
 
         public string? Phonenumber { get; set; }
 
