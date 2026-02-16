@@ -18,21 +18,21 @@
                         <LayoutView Layout="@typeof(TorqLayout)">
                             <MudContainer Class="mt-16">
                                 <MudAlert Severity="Severity.Error" Variant="Variant.Filled" ContentAlignment="HorizontalAlignment.Center">
-                                    No tienes permisos suficientes.
+                                    Not enough auth level.
                                 </MudAlert>
                             </MudContainer>
                         </LayoutView>
                     }
                 </NotAuthorized>
                 <Authorizing>
-                    <MudText Align="Align.Center" Class="mt-16">Validando credenciales...</MudText>
+                    <MudText Align="Align.Center" Class="mt-16">Validating credentials</MudText>
                 </Authorizing>
             </AuthorizeRouteView>
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
         <NotFound>
             <LayoutView Layout="@typeof(TorqLayout)">
-                <MudAlert Severity="Severity.Error">Página no encontrada.</MudAlert>
+                <MudAlert Severity="Severity.Error">Page not found</MudAlert>
             </LayoutView>
         </NotFound>
     </Router>

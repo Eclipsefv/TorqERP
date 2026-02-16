@@ -19,7 +19,6 @@
           RowClass="cursor-pointer">
 
     <ToolBarContent>
-        <MudText Typo="Typo.h6">Product List</MudText>
         <MudSpacer />
         <MudTextField @bind-Value="_searchString"
                       Placeholder="Search by SKU or Name"
@@ -30,6 +29,12 @@
         
         <MudText Typo="Typo.h6">Product List</MudText>
         <MudSpacer />
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="OpenCreateDialog"
+                   StartIcon="@Icons.Material.Filled.Add">
+            Add Product
+        </MudButton>
     </ToolBarContent>
 
     <HeaderContent>
@@ -93,7 +98,7 @@
     </TitleContent>
     <DialogContent>
         <MudGrid>
-            <MudItem xs="12" sm="6">a
+            <MudItem xs="12" sm="6">
                 @*blocks sku on edit just in case some user tries to edit it*@
                 <MudTextField T="string" Label="SKU" @bind-Value="_currentProduct.Sku" Required="true" Variant="Variant.Outlined" Disabled="@_isEditMode" />
             </MudItem>
@@ -188,15 +193,30 @@
     }
 
     //crud
-
     private async Task SaveProduct()
     {
         if (string.IsNullOrWhiteSpace(_currentProduct.Name))
         {
-            Snackbar.Add("Error unnamed product", Severity.Warning);
+            Snackbar.Add("Name is required", Severity.Warning);
             return;
         }
 
+        if (_currentProduct.SellPrice < _currentProduct.BuyPrice)
+        {
+            Snackbar.Add($"Cant sell lower than buy price", Severity.Warning);
+            return;
+        }
+
+        if (_currentProduct.SellPrice < 0 || _currentProduct.BuyPrice < 0)
+        {
+            Snackbar.Add("Prices cant be negative", Severity.Warning);
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_currentProduct.Sku))
+        {
+            Snackbar.Add("SKU Missing.", Severity.Warning);
+            return;
+        }
         if (_isEditMode)
         {
             await UpdateProductLogic();
@@ -209,18 +229,6 @@
 
     private async Task CreateProductLogic()
     {
-        if (string.IsNullOrWhiteSpace(_currentProduct.Sku))
-        {
-            Snackbar.Add("SKU Missing.", Severity.Warning);
-            return;
-        }
-
-        if (_currentProduct.SellPrice < 0)
-        {
-            Snackbar.Add("Selling price cant be lower than cost", Severity.Warning);
-            return;
-        }
-
         try
         {
             var success = await ApiService.CreateProductAsync(_currentProduct);

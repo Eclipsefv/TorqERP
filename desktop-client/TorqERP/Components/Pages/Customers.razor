@@ -1,0 +1,222 @@
+﻿@page "/customers"
+@using System.Globalization
+@using TorqERP.Services
+@using TorqERP.DataModels
+@using Microsoft.AspNetCore.Authorization
+@using System.Linq
+@attribute [Authorize]
+@inject ApiService ApiService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-4" Color="Color.Primary">Customer Management</MudText>
+
+<MudTable Items="@_customers"
+          Hover="true"
+          Breakpoint="Breakpoint.Sm"
+          Loading="@_loading"
+          LoadingProgressColor="Color.Info"
+          Filter="new Func<Customer,bool>(FilterFunc1)"
+          Dense="true"
+          OnRowClick="@((TableRowClickEventArgs<Customer> args) => OnRowClick(args))"
+          RowClass="cursor-pointer">
+
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Client List</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="_searchString"
+                      Placeholder="Search by Name, NIF or Email"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium"
+                      Class="mt-0" />
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreateDialog" StartIcon="@Icons.Material.Filled.Add">
+            Add Customer
+        </MudButton>
+    </ToolBarContent>
+
+    <HeaderContent>
+        <MudTh>NIF</MudTh>
+        <MudTh>Name</MudTh>
+        <MudTh>Email</MudTh>
+        <MudTh>Phone</MudTh>
+        <MudTh>Address</MudTh>
+        <MudTh>Vehicles</MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="NIF">
+            <MudText Typo="Typo.body2" Color="Color.Default"><b>@context.Nif</b></MudText>
+        </MudTd>
+        <MudTd DataLabel="Name">@context.Name</MudTd>
+            <MudTd DataLabel="Email">@context.Email</MudTd>
+            <MudTd DataLabel="Phone">@context.Phonenumber</MudTd>
+            <MudTd DataLabel="Address">@(string.IsNullOrEmpty(context.Address) ? "-" : context.Address)</MudTd>
+            <MudTd DataLabel="Vehicles">
+                @if (context.Vehicles != null && context.Vehicles.Any())
+            {
+                <MudChip T="string" Variant="Variant.Text" Color="Color.Info" Size="Size.Small">
+                    @context.Vehicles.Count Cars
+                </MudChip>
+            }
+            else
+            {
+                <MudText Typo="Typo.caption" Color="Color.Default">None</MudText>
+            }
+        </MudTd>
+    </RowTemplate>
+
+    <PagerContent>
+        <MudTablePager InfoFormat="{first_item}-{last_item} of {all_items}" RowsPerPageString="Rows per page:" />
+    </PagerContent>
+</MudTable>
+
+@*Basically same dialog as in inventory and I will use the same altering dialog method for editing*@
+<MudDialog @bind-Visible="_isDialogVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@(_isEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.PersonAdd)" Class="mr-3" />
+            @(_isEditMode ? $"Edit Customer: {_currentCustomer.Name}" : "New Customer")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="NIF" @bind-Value="_currentCustomer.Nif" Required="true" Variant="Variant.Outlined" Disabled="@_isEditMode" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Name" @bind-Value="_currentCustomer.Name" Required="true" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Email" @bind-Value="_currentCustomer.Email" Variant="Variant.Outlined" InputType="InputType.Email" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Phone Number" @bind-Value="_currentCustomer.Phonenumber" Variant="Variant.Outlined" InputType="InputType.Telephone" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField T="string" Label="Address" @bind-Value="_currentCustomer.Address" Variant="Variant.Outlined" Lines="2" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveCustomer">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _loading = true;
+    private string _searchString = "";
+    private List<Customer> _customers = new();
+    private bool _isDialogVisible;
+    private Customer _currentCustomer = new();
+    private bool _isEditMode = false;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCustomers();
+    }
+
+    private void OpenCreateDialog()
+    {
+        _isEditMode = false;
+        _currentCustomer = new Customer();
+        _isDialogVisible = true;
+    }
+
+    private void CloseDialog() => _isDialogVisible = false;
+
+    private async Task LoadCustomers()
+    {
+        _loading = true;
+        try
+        {
+            _customers = await ApiService.GetCustomersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error loading customers: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveCustomer()
+    {
+        if (string.IsNullOrWhiteSpace(_currentCustomer.Name) || string.IsNullOrWhiteSpace(_currentCustomer.Nif))
+        {
+            Snackbar.Add("Name and NIF are required.", Severity.Warning);
+            return;
+        }
+
+        if (_isEditMode)
+        {
+            await UpdateCustomerLogic();
+        }
+        else
+        {
+            await CreateCustomerLogic();
+        }
+    }
+
+    private async Task CreateCustomerLogic()
+    {
+        try
+        {
+            var success = await ApiService.CreateCustomerAsync(_currentCustomer);
+
+            if (success)
+            {
+                Snackbar.Add("Customer created successfully", Severity.Success);
+                await LoadCustomers();
+                CloseDialog();
+            }
+            else
+            {
+                Snackbar.Add("Error creating customer", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task UpdateCustomerLogic()
+    {
+       
+           
+    }
+
+    private void OnRowClick(TableRowClickEventArgs<Customer> args)
+    {
+        _isEditMode = true;
+        _currentCustomer = new Customer
+            {
+                Id = args.Item.Id,
+                Nif = args.Item.Nif,
+                Name = args.Item.Name,
+                Address = args.Item.Address,
+                Phonenumber = args.Item.Phonenumber,
+                Email = args.Item.Email,
+                Vehicles = args.Item.Vehicles
+            };
+        _isDialogVisible = true;
+    }
+
+    private bool FilterFunc1(Customer customer) => FilterFunc(customer, _searchString);
+
+    private bool FilterFunc(Customer customer, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString)) return true;
+        if (customer.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+        if (customer.Nif.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+        if (!string.IsNullOrEmpty(customer.Email) && customer.Email.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+        if (!string.IsNullOrEmpty(customer.Phonenumber) && customer.Phonenumber.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
+
+        return false;
+    }
+}
