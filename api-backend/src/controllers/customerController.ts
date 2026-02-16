@@ -55,3 +55,40 @@ export const getCustomers = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const updateCustomer = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { nif, name, address, phonenumber, email } = req.body;
+
+  try {
+    const updatedCustomer = await prisma.customer.update({
+      where: { 
+        id: parseInt(id) 
+      },
+      data: {
+        nif,
+        name,
+        address,
+        phonenumber,
+        email
+      },
+    });
+
+    return res.status(200).json(updatedCustomer);
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({ 
+        message: "nif or email already in use" 
+      });
+    }
+
+    if (error.code === 'P2025') {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    res.status(500).json({ 
+      message: "error on ipdate", 
+      error: error.message 
+    });
+  }
+};

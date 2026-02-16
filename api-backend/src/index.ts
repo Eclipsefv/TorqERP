@@ -4,10 +4,11 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 
 //Router imports
-import authRouter from './routes/authRouter.js';
-import productRouter from './routes/productRouter.js';
-import userRouter from './routes/userRouter.js';
-import customerRouter from './routes/customerRouter.js';
+import authRouter from './routes/authRouter';
+import productRouter from './routes/productRouter';
+import userRouter from './routes/userRouter';
+import customerRouter from './routes/customerRouter';
+import vehicleRouter from './routes/vehicleRouter';
 
 dotenv.config();
 
@@ -18,6 +19,9 @@ app.use(cors());
 app.use(express.json()); 
 
 app.use('/api/auth', authRouter);
+
+//vehicles
+app.use('/api/vehicles', vehicleRouter);
 
 //products
 app.use('/api/products', productRouter);
