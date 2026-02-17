@@ -44,7 +44,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
 export const getCustomers = async (req: Request, res: Response) => {
   try {
     const customers = await prisma.customer.findMany({
-      // include: { vehicles: true } 
+      include: { vehicles: true } 
     });
 
     return res.status(200).json(customers);
