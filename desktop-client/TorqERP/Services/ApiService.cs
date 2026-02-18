@@ -211,7 +211,7 @@ namespace TorqERP.Services
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 };
 
-                var response = await _httpClient.PostAsJsonAsync("/api/customers/insert", newCustomer, options);
+                var response = await _httpClient.PostAsJsonAsync("/api/customers/insertCustomer", newCustomer, options);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -299,6 +299,32 @@ namespace TorqERP.Services
             {
                 System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
                 return new List<Vehicle>();
+            }
+        }
+        public async Task<bool> CreateVehicleAsync(Vehicle newVehicle)
+        {
+            try
+            {
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                };
+
+                var response = await _httpClient.PostAsJsonAsync("/api/vehicles/insert", newVehicle, options);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return true;
+                }
+
+                var errorBody = await response.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"Error response from API: {errorBody}");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
+                return false;
             }
         }
     }

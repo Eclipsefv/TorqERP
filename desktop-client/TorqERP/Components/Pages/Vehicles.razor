@@ -3,6 +3,8 @@
 @using TorqERP.DataModels
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
+@using System.Text.Json
+@inject IJSRuntime JSRuntime
 @inject ApiService ApiService
 @inject ISnackbar Snackbar
 
@@ -15,6 +17,8 @@
           Dense="true"
           Breakpoint="Breakpoint.Sm"
           Elevation="1"
+          OnRowClick="@((TableRowClickEventArgs<Vehicle> args) => OnRowClick(args))"
+          RowClass="cursor-pointer"
           Filter="new Func<Vehicle,bool>(FilterFunc1)">
 
     <ToolBarContent>
@@ -25,10 +29,13 @@
                       Adornment="Adornment.Start"
                       AdornmentIcon="@Icons.Material.Filled.Search"
                       IconSize="Size.Medium"
-                      Class="mt-0">
-        </MudTextField>
+                      Class="mt-0"
+                      Immediate="true" />
         <MudSpacer />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="OpenCreateDialog">
             Add Vehicle
         </MudButton>
     </ToolBarContent>
@@ -58,14 +65,65 @@
         </PagerContent>
     </MudTable>
 
+    <MudDialog @bind-Visible="_isDialogVisible" Options="_dialogOptions">
+        <TitleContent>
+            <MudText Typo="Typo.h6">
+                <MudIcon Icon="@(_isEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.DirectionsCar)" Class="mr-3" />
+                @(_isEditMode ? $"Edit vehicle: {_currentVehicle.Plate}" : "New vehicle")
+            </MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudAutocomplete T="Customer"
+                                     Label="Owner"
+                                     @bind-Value="_selectedCustomer"
+                                     SearchFunc="@SearchCustomers"
+                                     ToStringFunc="@(c => c == null ? null : $"{c.Name} ({c.Nif})")"
+                                     Variant="Variant.Outlined"
+                                     AdornmentIcon="@Icons.Material.Filled.Search"
+                                     Placeholder="Type to search..." />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" Label="Plate" @bind-Value="_currentVehicle.Plate" Variant="Variant.Outlined" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudNumericField T="int?" Label="Year" @bind-Value="_currentVehicle.Year" Variant="Variant.Outlined" Min="1900" Max="2100" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" Label="Brand" @bind-Value="_currentVehicle.Brand" Variant="Variant.Outlined" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" Label="Model" @bind-Value="_currentVehicle.Model" Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="CloseDialog">Cancel</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveVehicle">Save</MudButton>
+        </DialogActions>
+    </MudDialog>
+
     @code {
     private List<Vehicle> _vehicles = new();
+    private List<Customer> _customers = new();
     private bool _loading = true;
     private string _searchString = "";
+
+    private bool _isDialogVisible;
+    private bool _isEditMode;
+    private Vehicle _currentVehicle = new();
+    private Customer? _selectedCustomer;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
 
     protected override async Task OnInitializedAsync()
     {
         await LoadVehicles();
+        await LoadCustomers();
     }
 
     private async Task LoadVehicles()
@@ -78,7 +136,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add("Error loading vehicles: " + ex.Message, Severity.Error);
+            Snackbar.Add($"Error loading vehicles: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -86,18 +144,124 @@
         }
     }
 
+    private async Task LoadCustomers()
+    {
+        try
+        {
+            var result = await ApiService.GetCustomersAsync();
+            _customers = result ?? new List<Customer>();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading customers: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OpenCreateDialog()
+    {
+        _isEditMode = false;
+        _currentVehicle = new Vehicle();
+        _selectedCustomer = null;
+        _isDialogVisible = true;
+    }
+
+    private void OnRowClick(TableRowClickEventArgs<Vehicle> args)
+    {
+        _isEditMode = true;
+        _currentVehicle = new Vehicle
+            {
+                Id = args.Item.Id,
+                Plate = args.Item.Plate,
+                Brand = args.Item.Brand,
+                Model = args.Item.Model,
+                Year = args.Item.Year,
+                CustomerId = args.Item.CustomerId
+            };
+        _selectedCustomer = _customers.FirstOrDefault(c => c.Id == _currentVehicle.CustomerId);
+        _isDialogVisible = true;
+    }
+
+    private void CloseDialog() => _isDialogVisible = false;
+
+    private async Task SaveVehicle()
+    {
+        // Manual validation - the "no-nonsense" way
+        if (string.IsNullOrWhiteSpace(_currentVehicle.Plate) || _selectedCustomer == null)
+        {
+            Snackbar.Add("Plate and owner are required.", Severity.Warning);
+            return;
+        }
+
+        _currentVehicle.CustomerId = _selectedCustomer.Id;
+
+        if (_isEditMode)
+        {
+            await UpdateVehicleLogic();
+        }
+        else
+        {
+            await CreateVehicleLogic();
+        }
+    }
+
+    private async Task CreateVehicleLogic()
+    {
+        try
+        {
+            var result = await ApiService.CreateVehicleAsync(_currentVehicle);
+            Console.WriteLine("DEBUG - Saving Vehicle JSON:");
+            var debugJson = JsonSerializer.Serialize(_currentVehicle, new JsonSerializerOptions { WriteIndented = true });
+            await JSRuntime.InvokeVoidAsync("alert", $"DEBUG - JSON to send:\n{debugJson}");
+            if (result)
+            {
+                Snackbar.Add("Vehicle created", Severity.Success);
+                await LoadVehicles();
+                CloseDialog();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task UpdateVehicleLogic()
+    {
+        /*
+        try
+        {
+            var result = await ApiService.UpdateVehicleAsync(_currentVehicle);
+            if (result)
+            {
+                Snackbar.Add("Vehicle updated", Severity.Success);
+                await LoadVehicles();
+                CloseDialog();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        */
+    }
+
+    private async Task<IEnumerable<Customer>> SearchCustomers(string value, CancellationToken token)
+    {
+        if (string.IsNullOrEmpty(value)) return _customers;
+
+        return _customers.Where(x =>
+            (x.Name?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (x.Nif?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false));
+    }
+
     private bool FilterFunc1(Vehicle vehicle) => FilterFunc(vehicle, _searchString);
 
     private bool FilterFunc(Vehicle vehicle, string searchString)
     {
-        if (string.IsNullOrWhiteSpace(searchString))
-            return true;
-        if (vehicle.Plate.Contains(searchString, StringComparison.OrdinalIgnoreCase))
-            return true;
-        if (vehicle.Brand?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false)
-            return true;
-        if (vehicle.Model?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false)
-            return true;
-        return false;
+        if (string.IsNullOrWhiteSpace(searchString)) return true;
+
+        return (vehicle.Plate?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+               (vehicle.Brand?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+               (vehicle.Model?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false);
     }
 }
