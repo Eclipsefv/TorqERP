@@ -247,5 +247,38 @@ namespace TorqERP.Services
                 return new List<Customer>();
             }
         }
+        public async Task<bool> UpdateCustomerAsync(Customer updatedCustomer)
+        {
+            try
+            {
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                };
+
+                if (string.IsNullOrEmpty(updatedCustomer.Id.ToString()) || updatedCustomer.Id == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("Error, product id null");
+                    return false;
+                }
+
+                string url = $"/api/customers/updateCustomer/{updatedCustomer.Id}";
+
+                var response = await _httpClient.PutAsJsonAsync(url, updatedCustomer, options);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return true;
+                }
+                var errorBody = await response.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"Error response from api: {errorBody}");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error on update: {ex.Message}");
+                return false;
+            }
+        }
     }
 }
