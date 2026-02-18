@@ -71,7 +71,9 @@
     </PagerContent>
 </MudTable>
 
-@*Basically same dialog as in inventory and I will use the same altering dialog method for editing*@
+@*Basically same dialog as in inventory and I will use the same altering dialog method for editing
+    added _activeTabIndex so I can change action buttons according to what tab is on screen right now
+*@
 <MudDialog @bind-Visible="_isDialogVisible" Options="_dialogOptions">
     <TitleContent>
         <MudText Typo="Typo.h6">
@@ -80,8 +82,9 @@
         </MudText>
     </TitleContent>
     <DialogContent>
-        <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+        <MudTabs @bind-ActivePanelIndex="_activeTabIndex" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
 
+            @*tab 0*@
             <MudTabPanel Text="Vehicles" Icon="@Icons.Material.Filled.DirectionsCar">
                 @if (_currentCustomer.Vehicles != null && _currentCustomer.Vehicles.Any())
                 {
@@ -100,20 +103,25 @@
                 }
             </MudTabPanel>
 
+            @*tab 1*@
             <MudTabPanel Text="General Info" Icon="@Icons.Material.Filled.Info">
                 <MudGrid>
                     <MudItem xs="12" sm="6">
                         <MudTextField T="string" Label="NIF" @bind-Value="_currentCustomer.Nif" Required="true" Variant="Variant.Outlined" Disabled="@_isEditMode" />
                     </MudItem>
+
                     <MudItem xs="12" sm="6">
                         <MudTextField T="string" Label="Name" @bind-Value="_currentCustomer.Name" Required="true" Variant="Variant.Outlined" />
                     </MudItem>
+
                     <MudItem xs="12" sm="6">
                         <MudTextField T="string" Label="Email" @bind-Value="_currentCustomer.Email" Variant="Variant.Outlined" InputType="InputType.Email" />
                     </MudItem>
+
                     <MudItem xs="12" sm="6">
                         <MudTextField T="string" Label="Phone Number" @bind-Value="_currentCustomer.Phonenumber" Variant="Variant.Outlined" InputType="InputType.Telephone" />
                     </MudItem>
+
                     <MudItem xs="12">
                         <MudTextField T="string" Label="Address" @bind-Value="_currentCustomer.Address" Variant="Variant.Outlined" Lines="2" />
                     </MudItem>
@@ -122,12 +130,20 @@
         </MudTabs>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="CloseDialog">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveCustomer">Save</MudButton>
+        @if (_activeTabIndex == 0)
+        {
+            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="CloseDialog">Close</MudButton>
+        }
+        else
+        {
+            <MudButton OnClick="CloseDialog">Cancel</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveCustomer">Save</MudButton>
+        }
     </DialogActions>
 </MudDialog>
 
 @code {
+
     private bool _loading = true;
     private string _searchString = "";
     private List<Customer> _customers = new();
@@ -135,6 +151,7 @@
     private Customer _currentCustomer = new();
     private bool _isEditMode = false;
     private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+    private int _activeTabIndex;
 
     protected override async Task OnInitializedAsync()
     {
