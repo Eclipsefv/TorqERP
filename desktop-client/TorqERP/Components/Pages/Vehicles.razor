@@ -1,0 +1,103 @@
+﻿@page "/vehicles"
+@using TorqERP.Services
+@using TorqERP.DataModels
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject ApiService ApiService
+@inject ISnackbar Snackbar
+
+<MudText Typo="Typo.h4" Class="mb-4" Color="Color.Primary">Vehicle Management</MudText>
+
+<MudTable Items="_vehicles"
+          Loading="_loading"
+          LoadingProgressColor="Color.Info"
+          Hover="true"
+          Dense="true"
+          Breakpoint="Breakpoint.Sm"
+          Elevation="1"
+          Filter="new Func<Vehicle,bool>(FilterFunc1)">
+
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Registered Vehicles</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="_searchString"
+                      Placeholder="Search by plate, brand or model"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium"
+                      Class="mt-0">
+        </MudTextField>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add">
+            Add Vehicle
+        </MudButton>
+    </ToolBarContent>
+
+    <HeaderContent>
+        <MudTh>Plate</MudTh>
+        <MudTh>Brand</MudTh>
+        <MudTh>Model</MudTh>
+        <MudTh>Year</MudTh>
+        <MudTh>Owner</MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="Plate">
+            <MudChip T="string" Color="Color.Primary" Variant="Variant.Text" Size="Size.Small">@context.Plate</MudChip>
+            </MudTd>
+            <MudTd DataLabel="Brand">@context.Brand</MudTd>
+            <MudTd DataLabel="Model">@context.Model</MudTd>
+            <MudTd DataLabel="Year">@context.Year</MudTd>
+            <MudTd DataLabel="Owner">
+                @(context.Customer?.Name ?? "Unassigned")
+            </MudTd>
+        </RowTemplate>
+
+        <PagerContent>
+            <MudTablePager InfoFormat="{first_item}-{last_item} of {all_items}" RowsPerPageString="Rows per page:" />
+        </PagerContent>
+    </MudTable>
+
+    @code {
+    private List<Vehicle> _vehicles = new();
+    private bool _loading = true;
+    private string _searchString = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadVehicles();
+    }
+
+    private async Task LoadVehicles()
+    {
+        try
+        {
+            _loading = true;
+            var result = await ApiService.GetVehiclesAsync();
+            _vehicles = result ?? new List<Vehicle>();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Error loading vehicles: " + ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private bool FilterFunc1(Vehicle vehicle) => FilterFunc(vehicle, _searchString);
+
+    private bool FilterFunc(Vehicle vehicle, string searchString)
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+            return true;
+        if (vehicle.Plate.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (vehicle.Brand?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            return true;
+        if (vehicle.Model?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            return true;
+        return false;
+    }
+}

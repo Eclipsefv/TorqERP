@@ -11,7 +11,17 @@
 <MudSnackbarProvider />
 
 <style>
-    .mud-layout, .mud-main-content, .mud-container {
+    .mud-layout {
+        background-color: #1a1a27 !important;
+    }
+
+    .mud-main-content {
+        background-color: #1a1a27 !important;
+        min-height: 100vh;
+        padding-top: 80px !important;
+    }
+
+    .mud-container {
         background-color: #1a1a27 !important;
     }
 </style>
@@ -22,7 +32,7 @@
 
         <MudSpacer />
 
-        @*test button products json*@
+        @*test button*@
         <AuthorizeView Roles="ADMIN">
             <MudTooltip Text="Testing product api">
                 <MudIconButton Icon="@Icons.Material.Filled.BugReport"
@@ -42,8 +52,8 @@
         <NavMenu />
     </MudDrawer>
 
-    <MudMainContent Class="pa-4">
-        <MudContainer MaxWidth="MaxWidth.ExtraLarge">
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-6">
             @Body
         </MudContainer>
     </MudMainContent>

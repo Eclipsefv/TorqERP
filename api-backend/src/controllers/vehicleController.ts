@@ -37,3 +37,20 @@ export const insertVehicle = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getVehicles = async (req: Request, res: Response) => {
+  try {
+    const vehicles = await prisma.vehicle.findMany({
+      include: {
+        customer: true
+      }
+    });
+    return res.status(200).json(vehicles);
+  } catch (error: any) {
+    
+    return res.status(500).json({ 
+      message: "Error obtaining vehicles", 
+      error: error.message 
+    });
+  }
+};

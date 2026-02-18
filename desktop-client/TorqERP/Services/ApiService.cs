@@ -280,5 +280,26 @@ namespace TorqERP.Services
                 return false;
             }
         }
+
+        //Vehicle funcs
+        public async Task<List<Vehicle>> GetVehiclesAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("api/vehicles/getVehicles");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadFromJsonAsync<List<Vehicle>>() ?? new List<Vehicle>();
+                }
+
+                return new List<Vehicle>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
+                return new List<Vehicle>();
+            }
+        }
     }
 }
