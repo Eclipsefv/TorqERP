@@ -185,7 +185,6 @@
 
     private async Task SaveVehicle()
     {
-        // Manual validation - the "no-nonsense" way
         if (string.IsNullOrWhiteSpace(_currentVehicle.Plate) || _selectedCustomer == null)
         {
             Snackbar.Add("Plate and owner are required.", Severity.Warning);
@@ -209,12 +208,10 @@
         try
         {
             var result = await ApiService.CreateVehicleAsync(_currentVehicle);
-            Console.WriteLine("DEBUG - Saving Vehicle JSON:");
-            var debugJson = JsonSerializer.Serialize(_currentVehicle, new JsonSerializerOptions { WriteIndented = true });
-            await JSRuntime.InvokeVoidAsync("alert", $"DEBUG - JSON to send:\n{debugJson}");
+
             if (result)
             {
-                Snackbar.Add("Vehicle created", Severity.Success);
+                Snackbar.Add("Vehicle created successfully", Severity.Success);
                 await LoadVehicles();
                 CloseDialog();
             }
@@ -227,13 +224,13 @@
 
     private async Task UpdateVehicleLogic()
     {
-        /*
         try
         {
             var result = await ApiService.UpdateVehicleAsync(_currentVehicle);
+
             if (result)
             {
-                Snackbar.Add("Vehicle updated", Severity.Success);
+                Snackbar.Add("Vehicle updated successfully", Severity.Success);
                 await LoadVehicles();
                 CloseDialog();
             }
@@ -242,7 +239,6 @@
         {
             Snackbar.Add(ex.Message, Severity.Error);
         }
-        */
     }
 
     private async Task<IEnumerable<Customer>> SearchCustomers(string value, CancellationToken token)

@@ -18,7 +18,6 @@ namespace TorqERP.Services
             _httpClient = httpClient;
         }
 
-
         //product functions
         /*
          * Receives the Product class
@@ -317,15 +316,76 @@ namespace TorqERP.Services
                     return true;
                 }
 
-                var errorBody = await response.Content.ReadAsStringAsync();
-                System.Diagnostics.Debug.WriteLine($"Error response from API: {errorBody}");
-                return false;
+                var errorMessage = await GetErrorMessageAsync(response);
+                throw new Exception(errorMessage);
             }
-            catch (Exception ex)
+            catch (HttpRequestException httpEx)
             {
-                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
-                return false;
+                throw new Exception($"Connection Error: {httpEx.Message}");
             }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        public async Task<bool> UpdateVehicleAsync(Vehicle updatedVehicle)
+        {
+            try
+            {
+                if (updatedVehicle.Id == 0)
+                    throw new Exception("Vehicle ID is not valid");
+
+                var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+                string url = $"/api/vehicles/updateVehicle/{updatedVehicle.Id}";
+
+                var response = await _httpClient.PutAsJsonAsync(url, updatedVehicle, options);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return true;
+                }
+                var errorMessage = await GetErrorMessageAsync(response);
+                throw new Exception(errorMessage);
+            }
+            catch (HttpRequestException httpEx)
+            {
+                throw new Exception($"Error: {httpEx.Message}");
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        //Private functions
+        private async Task<string> GetErrorMessageAsync(HttpResponseMessage response)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync();
+
+            if (string.IsNullOrWhiteSpace(errorBody))
+                return $"Error: {response.StatusCode}";
+
+            try
+            {
+                using var doc = JsonDocument.Parse(errorBody);
+
+                if (doc.RootElement.TryGetProperty("message", out var messageElement))
+                {
+                    return messageElement.GetString() ?? "Error has no message str";
+                }
+
+                if (doc.RootElement.TryGetProperty("errors", out var errorsElement))
+                {
+                    return "Multiple errors detected";
+                }
+            }
+            catch (JsonException)
+            {
+                return errorBody.Length > 100 ? errorBody.Substring(0, 100) : errorBody;
+            }
+
+            return errorBody;
         }
     }
 }

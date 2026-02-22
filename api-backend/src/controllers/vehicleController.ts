@@ -21,7 +21,7 @@ export const insertVehicle = async (req: Request, res: Response) => {
   } catch (error: any) {
     if (error.code === 'P2002') {
       return res.status(400).json({ 
-        message: "Plate already on db" 
+        message: "Plate already in use" 
       });
     }
 
@@ -50,6 +50,51 @@ export const getVehicles = async (req: Request, res: Response) => {
     
     return res.status(500).json({ 
       message: "Error obtaining vehicles", 
+      error: error.message 
+    });
+  }
+};
+
+export const updateVehicle = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { plate, brand, model, year, customerId } = req.body;
+
+  try {
+    const updatedVehicle = await prisma.vehicle.update({
+      where: { id: Number(id) },
+      data: {
+        plate,
+        brand,
+        model,
+        year,
+        customerId,
+      },
+    });
+
+    return res.status(200).json(updatedVehicle);
+
+  } catch (error: any) {
+
+    if (error.code === 'P2025') {
+      return res.status(404).json({ 
+        message: "Vehicle not found" 
+      });
+    }
+
+    if (error.code === 'P2002') {
+      return res.status(400).json({ 
+        message: "Plate already in use by another car" 
+      });
+    }
+
+    if (error.code === 'P2003') {
+      return res.status(400).json({ 
+        message: "Customer ID incorrect (FK)" 
+      });
+    }
+
+    return res.status(500).json({ 
+      message: "Error on update", 
       error: error.message 
     });
   }
