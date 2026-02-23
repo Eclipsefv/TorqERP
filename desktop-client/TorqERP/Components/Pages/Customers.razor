@@ -1,36 +1,34 @@
 ﻿@page "/customers"
-@using System.Globalization
-@using TorqERP.Services
+@using TorqERP.ViewModels
 @using TorqERP.DataModels
 @using Microsoft.AspNetCore.Authorization
 @using System.Linq
 @attribute [Authorize]
-@inject ApiService ApiService
-@inject ISnackbar Snackbar
+@inject CustomersViewModel ViewModel
 
 <MudText Typo="Typo.h4" Class="mb-4" Color="Color.Primary">Customer Management</MudText>
 
-<MudTable Items="@_customers"
+<MudTable Items="@ViewModel.Customers"
           Hover="true"
           Breakpoint="Breakpoint.Sm"
-          Loading="@_loading"
+          Loading="@ViewModel.Loading"
           LoadingProgressColor="Color.Info"
-          Filter="new Func<Customer,bool>(FilterFunc1)"
+          Filter="new Func<Customer,bool>(ViewModel.FilterCustomer)"
           Dense="true"
-          OnRowClick="@((TableRowClickEventArgs<Customer> args) => OnRowClick(args))"
+          OnRowClick="@((TableRowClickEventArgs<Customer> args) => ViewModel.OnRowClick(args.Item))"
           RowClass="cursor-pointer">
 
     <ToolBarContent>
         <MudText Typo="Typo.h6">Client List</MudText>
         <MudSpacer />
-        <MudTextField @bind-Value="_searchString"
+        <MudTextField @bind-Value="ViewModel.SearchString"
                       Placeholder="Search by Name, NIF or Email"
                       Adornment="Adornment.Start"
                       AdornmentIcon="@Icons.Material.Filled.Search"
                       IconSize="Size.Medium"
                       Class="mt-0" />
         <MudSpacer />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreateDialog" StartIcon="@Icons.Material.Filled.Add">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ViewModel.OpenCreateDialog" StartIcon="@Icons.Material.Filled.Add">
             Add Customer
         </MudButton>
     </ToolBarContent>
@@ -71,36 +69,33 @@
     </PagerContent>
 </MudTable>
 
-@*Basically same dialog as in inventory and I will use the same altering dialog method for editing
-    added _activeTabIndex so I can change action buttons according to what tab is on screen right now
-*@
-<MudDialog @bind-Visible="_isDialogVisible" Options="_dialogOptions">
+<MudDialog @bind-Visible="ViewModel.IsDialogVisible" Options="ViewModel.DialogOptions">
     <TitleContent>
         <MudText Typo="Typo.h6">
-            <MudIcon Icon="@(_isEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.PersonAdd)" Class="mr-3" />
+            <MudIcon Icon="@(ViewModel.IsEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.PersonAdd)" Class="mr-3" />
 
-            @if (_activeTabIndex == 0)
+            @if (ViewModel.ActiveTabIndex == 0)
             {
-                @(_isEditMode ? $"Vehicles Overview: {_currentCustomer.Name}" : "New Customer Vehicles")
+                @(ViewModel.IsEditMode ? $"Vehicles Overview: {ViewModel.CurrentCustomer.Name}" : "New Customer Vehicles")
             }
-            else if (_activeTabIndex == 1)
+            else if (ViewModel.ActiveTabIndex == 1)
             {
-                @(_isEditMode ? $"Edit Customer: {_currentCustomer.Name}" : "New Customer")
-            }else
+                @(ViewModel.IsEditMode ? $"Edit Customer: {ViewModel.CurrentCustomer.Name}" : "New Customer")
+            }
+            else
             {
-                @(_isEditMode ? $"WIP: {_currentCustomer.Name}" : "WIP")
+                @(ViewModel.IsEditMode ? $"WIP: {ViewModel.CurrentCustomer.Name}" : "WIP")
             }
         </MudText>
     </TitleContent>
     <DialogContent>
-        <MudTabs @bind-ActivePanelIndex="_activeTabIndex" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+        <MudTabs @bind-ActivePanelIndex="ViewModel.ActiveTabIndex" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
 
-            @*tab 0*@
             <MudTabPanel Text="Vehicles" Icon="@Icons.Material.Filled.DirectionsCar">
-                @if (_currentCustomer.Vehicles != null && _currentCustomer.Vehicles.Any())
+                @if (ViewModel.CurrentCustomer.Vehicles != null && ViewModel.CurrentCustomer.Vehicles.Any())
                 {
                     <MudList T="Vehicle">
-                        @foreach (var vehicle in _currentCustomer.Vehicles)
+                        @foreach (var vehicle in ViewModel.CurrentCustomer.Vehicles)
                         {
                             <MudListItem Icon="@Icons.Material.Filled.DirectionsCar">
                                 @vehicle.Brand @vehicle.Model (@vehicle.Plate)
@@ -114,176 +109,47 @@
                 }
             </MudTabPanel>
 
-            @*tab 1*@
             <MudTabPanel Text="General Info" Icon="@Icons.Material.Filled.Info">
                 <MudGrid>
                     <MudItem xs="12" sm="6">
-                        <MudTextField T="string" Label="NIF" @bind-Value="_currentCustomer.Nif" Required="true" Variant="Variant.Outlined" Disabled="@_isEditMode" />
+                        <MudTextField T="string" Label="NIF" @bind-Value="ViewModel.CurrentCustomer.Nif" Required="true" Variant="Variant.Outlined" Disabled="@ViewModel.IsEditMode" />
                     </MudItem>
 
                     <MudItem xs="12" sm="6">
-                        <MudTextField T="string" Label="Name" @bind-Value="_currentCustomer.Name" Required="true" Variant="Variant.Outlined" />
+                        <MudTextField T="string" Label="Name" @bind-Value="ViewModel.CurrentCustomer.Name" Required="true" Variant="Variant.Outlined" />
                     </MudItem>
 
                     <MudItem xs="12" sm="6">
-                        <MudTextField T="string" Label="Email" @bind-Value="_currentCustomer.Email" Variant="Variant.Outlined" InputType="InputType.Email" />
+                        <MudTextField T="string" Label="Email" @bind-Value="ViewModel.CurrentCustomer.Email" Variant="Variant.Outlined" InputType="InputType.Email" />
                     </MudItem>
 
                     <MudItem xs="12" sm="6">
-                        <MudTextField T="string" Label="Phone Number" @bind-Value="_currentCustomer.Phonenumber" Variant="Variant.Outlined" InputType="InputType.Telephone" />
+                        <MudTextField T="string" Label="Phone Number" @bind-Value="ViewModel.CurrentCustomer.Phonenumber" Variant="Variant.Outlined" InputType="InputType.Telephone" />
                     </MudItem>
 
                     <MudItem xs="12">
-                        <MudTextField T="string" Label="Address" @bind-Value="_currentCustomer.Address" Variant="Variant.Outlined" Lines="2" />
+                        <MudTextField T="string" Label="Address" @bind-Value="ViewModel.CurrentCustomer.Address" Variant="Variant.Outlined" Lines="2" />
                     </MudItem>
                 </MudGrid>
             </MudTabPanel>
         </MudTabs>
     </DialogContent>
     <DialogActions>
-        @if (_activeTabIndex == 0)
+        @if (ViewModel.ActiveTabIndex == 0)
         {
-            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="CloseDialog">Close</MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="ViewModel.CloseDialog">Close</MudButton>
         }
         else
         {
-            <MudButton OnClick="CloseDialog">Cancel</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveCustomer">Save</MudButton>
+            <MudButton OnClick="ViewModel.CloseDialog">Cancel</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ViewModel.SaveCustomerAsync">Save</MudButton>
         }
     </DialogActions>
 </MudDialog>
 
 @code {
-
-    private bool _loading = true;
-    private string _searchString = "";
-    private List<Customer> _customers = new();
-    private bool _isDialogVisible;
-    private Customer _currentCustomer = new();
-    private bool _isEditMode = false;
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
-    private int _activeTabIndex;
-
     protected override async Task OnInitializedAsync()
     {
-        await LoadCustomers();
-    }
-
-    private void OpenCreateDialog()
-    {
-        _isEditMode = false;
-        _currentCustomer = new Customer();
-        _isDialogVisible = true;
-    }
-
-    private void CloseDialog() => _isDialogVisible = false;
-
-    private async Task LoadCustomers()
-    {
-        _loading = true;
-        try
-        {
-            _customers = await ApiService.GetCustomersAsync();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add("Error loading customers: " + ex.Message, Severity.Error);
-        }
-        finally
-        {
-            _loading = false;
-        }
-    }
-
-    private async Task SaveCustomer()
-    {
-        if (string.IsNullOrWhiteSpace(_currentCustomer.Name) || string.IsNullOrWhiteSpace(_currentCustomer.Nif))
-        {
-            Snackbar.Add("Name and NIF are required.", Severity.Warning);
-            return;
-        }
-
-        if (_isEditMode)
-        {
-            await UpdateCustomerLogic();
-        }
-        else
-        {
-            await CreateCustomerLogic();
-        }
-    }
-
-    private async Task CreateCustomerLogic()
-    {
-        try
-        {
-            var success = await ApiService.CreateCustomerAsync(_currentCustomer);
-
-            if (success)
-            {
-                Snackbar.Add("Customer created successfully", Severity.Success);
-                await LoadCustomers();
-                CloseDialog();
-            }
-            else
-            {
-                Snackbar.Add("Error creating customer", Severity.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
-        }
-    }
-
-    private async Task UpdateCustomerLogic()
-    {
-        try
-        {
-            var success = await ApiService.UpdateCustomerAsync(_currentCustomer);
-
-            if (success)
-            {
-                await LoadCustomers();
-                CloseDialog();
-            }
-            else
-            {
-                Snackbar.Add("Error updating product");
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
-        }
-    }
-
-    private void OnRowClick(TableRowClickEventArgs<Customer> args)
-    {
-        _isEditMode = true;
-        _currentCustomer = new Customer
-            {
-                Id = args.Item.Id,
-                Nif = args.Item.Nif,
-                Name = args.Item.Name,
-                Address = args.Item.Address,
-                Phonenumber = args.Item.Phonenumber,
-                Email = args.Item.Email,
-                Vehicles = args.Item.Vehicles
-            };
-        _isDialogVisible = true;
-    }
-
-    private bool FilterFunc1(Customer customer) => FilterFunc(customer, _searchString);
-
-    private bool FilterFunc(Customer customer, string searchString)
-    {
-        if (string.IsNullOrWhiteSpace(searchString)) return true;
-        if (customer.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
-        if (customer.Nif.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
-        if (!string.IsNullOrEmpty(customer.Email) && customer.Email.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
-        if (!string.IsNullOrEmpty(customer.Phonenumber) && customer.Phonenumber.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
-
-        return false;
+        await ViewModel.InitializeAsync();
     }
 }

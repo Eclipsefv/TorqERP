@@ -2,6 +2,7 @@
 using MudBlazor.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using TorqERP.Services;
+using TorqERP.ViewModels;
 
 using Uri = System.Uri;
 
@@ -54,6 +55,8 @@ namespace TorqERP
             })
             .AddHttpMessageHandler<TokenHandler>();
 
+            //VMs
+            builder.Services.AddScoped<CustomersViewModel>();
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
