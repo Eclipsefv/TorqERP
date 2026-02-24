@@ -57,6 +57,7 @@ namespace TorqERP
 
             //VMs
             builder.Services.AddScoped<CustomersViewModel>();
+            builder.Services.AddTransient<VehiclesViewModel>();
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();

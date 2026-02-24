@@ -1,30 +1,27 @@
 ﻿@page "/vehicles"
-@using TorqERP.Services
+@using TorqERP.ViewModels
 @using TorqERP.DataModels
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@using System.Text.Json
-@inject IJSRuntime JSRuntime
-@inject ApiService ApiService
-@inject ISnackbar Snackbar
+@inject VehiclesViewModel VM
 
 <MudText Typo="Typo.h4" Class="mb-4" Color="Color.Primary">Vehicle Management</MudText>
 
-<MudTable Items="_vehicles"
-          Loading="_loading"
+<MudTable Items="VM.Vehicles"
+          Loading="VM.IsLoading"
           LoadingProgressColor="Color.Info"
           Hover="true"
           Dense="true"
           Breakpoint="Breakpoint.Sm"
           Elevation="1"
-          OnRowClick="@((TableRowClickEventArgs<Vehicle> args) => OnRowClick(args))"
+          OnRowClick="@((TableRowClickEventArgs<Vehicle> args) => VM.OnRowClick(args))"
           RowClass="cursor-pointer"
-          Filter="new Func<Vehicle,bool>(FilterFunc1)">
+          Filter="new Func<Vehicle, bool>(VM.FilterVehicle)">
 
     <ToolBarContent>
         <MudText Typo="Typo.h6">Registered Vehicles</MudText>
         <MudSpacer />
-        <MudTextField @bind-Value="_searchString"
+        <MudTextField @bind-Value="VM.SearchString"
                       Placeholder="Search by plate, brand or model"
                       Adornment="Adornment.Start"
                       AdornmentIcon="@Icons.Material.Filled.Search"
@@ -35,7 +32,7 @@
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Add"
-                   OnClick="OpenCreateDialog">
+                   OnClick="VM.OpenCreateDialog">
             Add Vehicle
         </MudButton>
     </ToolBarContent>
@@ -51,213 +48,64 @@
     <RowTemplate>
         <MudTd DataLabel="Plate">
             <MudChip T="string" Color="Color.Primary" Variant="Variant.Text" Size="Size.Small">@context.Plate</MudChip>
-            </MudTd>
-            <MudTd DataLabel="Brand">@context.Brand</MudTd>
-            <MudTd DataLabel="Model">@context.Model</MudTd>
-            <MudTd DataLabel="Year">@context.Year</MudTd>
-            <MudTd DataLabel="Owner">
-                @(context.Customer?.Name ?? "Unassigned")
-            </MudTd>
-        </RowTemplate>
+        </MudTd>
+        <MudTd DataLabel="Brand">@context.Brand</MudTd>
+        <MudTd DataLabel="Model">@context.Model</MudTd>
+        <MudTd DataLabel="Year">@context.Year</MudTd>
+        <MudTd DataLabel="Owner">@(context.Customer?.Name ?? "Unassigned")</MudTd>
+    </RowTemplate>
 
-        <PagerContent>
-            <MudTablePager InfoFormat="{first_item}-{last_item} of {all_items}" RowsPerPageString="Rows per page:" />
-        </PagerContent>
-    </MudTable>
+    <PagerContent>
+        <MudTablePager InfoFormat="{first_item}-{last_item} of {all_items}" RowsPerPageString="Rows per page:" />
+    </PagerContent>
+</MudTable>
 
-    <MudDialog @bind-Visible="_isDialogVisible" Options="_dialogOptions">
-        <TitleContent>
-            <MudText Typo="Typo.h6">
-                <MudIcon Icon="@(_isEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.DirectionsCar)" Class="mr-3" />
-                @(_isEditMode ? $"Edit vehicle: {_currentVehicle.Plate}" : "New vehicle")
-            </MudText>
-        </TitleContent>
-        <DialogContent>
-            <MudGrid>
-                <MudItem xs="12">
-                    <MudAutocomplete T="Customer"
-                                     Label="Owner"
-                                     @bind-Value="_selectedCustomer"
-                                     SearchFunc="@SearchCustomers"
-                                     ToStringFunc="@(c => c == null ? null : $"{c.Name} ({c.Nif})")"
-                                     Variant="Variant.Outlined"
-                                     AdornmentIcon="@Icons.Material.Filled.Search"
-                                     Placeholder="Type to search..." />
-                </MudItem>
+<MudDialog @bind-Visible="VM.IsDialogVisible" Options="VM.DialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@(VM.IsEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.DirectionsCar)" Class="mr-3" />
+            @(VM.IsEditMode ? $"Edit vehicle: {VM.CurrentVehicle.Plate}" : "New vehicle")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudAutocomplete T="Customer"
+                                 Label="Owner"
+                                 @bind-Value="VM.SelectedCustomer"
+                                 SearchFunc="VM.SearchCustomers"
+                                 ToStringFunc="@(c => c == null ? null : $"{c.Name} ({c.Nif})")"
+                                 Variant="Variant.Outlined"
+                                 AdornmentIcon="@Icons.Material.Filled.Search"
+                                 Placeholder="Type to search..." />
+            </MudItem>
 
-                <MudItem xs="12" sm="6">
-                    <MudTextField T="string" Label="Plate" @bind-Value="_currentVehicle.Plate" Variant="Variant.Outlined" />
-                </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Plate" @bind-Value="VM.CurrentVehicle.Plate" Variant="Variant.Outlined" />
+            </MudItem>
 
-                <MudItem xs="12" sm="6">
-                    <MudNumericField T="int?" Label="Year" @bind-Value="_currentVehicle.Year" Variant="Variant.Outlined" Min="1900" Max="2100" />
-                </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudNumericField T="int?" Label="Year" @bind-Value="VM.CurrentVehicle.Year" Variant="Variant.Outlined" Min="1900" Max="2100" />
+            </MudItem>
 
-                <MudItem xs="12" sm="6">
-                    <MudTextField T="string" Label="Brand" @bind-Value="_currentVehicle.Brand" Variant="Variant.Outlined" />
-                </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Brand" @bind-Value="VM.CurrentVehicle.Brand" Variant="Variant.Outlined" />
+            </MudItem>
 
-                <MudItem xs="12" sm="6">
-                    <MudTextField T="string" Label="Model" @bind-Value="_currentVehicle.Model" Variant="Variant.Outlined" />
-                </MudItem>
-            </MudGrid>
-        </DialogContent>
-        <DialogActions>
-            <MudButton OnClick="CloseDialog">Cancel</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveVehicle">Save</MudButton>
-        </DialogActions>
-    </MudDialog>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Model" @bind-Value="VM.CurrentVehicle.Model" Variant="Variant.Outlined" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="VM.CloseDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="VM.SaveVehicleCommand.ExecuteAsync">Save</MudButton>
+    </DialogActions>
+</MudDialog>
 
-    @code {
-    private List<Vehicle> _vehicles = new();
-    private List<Customer> _customers = new();
-    private bool _loading = true;
-    private string _searchString = "";
-
-    private bool _isDialogVisible;
-    private bool _isEditMode;
-    private Vehicle _currentVehicle = new();
-    private Customer? _selectedCustomer;
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
-
+@code {
     protected override async Task OnInitializedAsync()
     {
-        await LoadVehicles();
-        await LoadCustomers();
-    }
-
-    private async Task LoadVehicles()
-    {
-        try
-        {
-            _loading = true;
-            var result = await ApiService.GetVehiclesAsync();
-            _vehicles = result ?? new List<Vehicle>();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error loading vehicles: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            _loading = false;
-        }
-    }
-
-    private async Task LoadCustomers()
-    {
-        try
-        {
-            var result = await ApiService.GetCustomersAsync();
-            _customers = result ?? new List<Customer>();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error loading customers: {ex.Message}", Severity.Error);
-        }
-    }
-
-    private void OpenCreateDialog()
-    {
-        _isEditMode = false;
-        _currentVehicle = new Vehicle();
-        _selectedCustomer = null;
-        _isDialogVisible = true;
-    }
-
-    private void OnRowClick(TableRowClickEventArgs<Vehicle> args)
-    {
-        _isEditMode = true;
-        _currentVehicle = new Vehicle
-            {
-                Id = args.Item.Id,
-                Plate = args.Item.Plate,
-                Brand = args.Item.Brand,
-                Model = args.Item.Model,
-                Year = args.Item.Year,
-                CustomerId = args.Item.CustomerId
-            };
-        _selectedCustomer = _customers.FirstOrDefault(c => c.Id == _currentVehicle.CustomerId);
-        _isDialogVisible = true;
-    }
-
-    private void CloseDialog() => _isDialogVisible = false;
-
-    private async Task SaveVehicle()
-    {
-        if (string.IsNullOrWhiteSpace(_currentVehicle.Plate) || _selectedCustomer == null)
-        {
-            Snackbar.Add("Plate and owner are required.", Severity.Warning);
-            return;
-        }
-
-        _currentVehicle.CustomerId = _selectedCustomer.Id;
-
-        if (_isEditMode)
-        {
-            await UpdateVehicleLogic();
-        }
-        else
-        {
-            await CreateVehicleLogic();
-        }
-    }
-
-    private async Task CreateVehicleLogic()
-    {
-        try
-        {
-            var result = await ApiService.CreateVehicleAsync(_currentVehicle);
-
-            if (result)
-            {
-                Snackbar.Add("Vehicle created successfully", Severity.Success);
-                await LoadVehicles();
-                CloseDialog();
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
-    }
-
-    private async Task UpdateVehicleLogic()
-    {
-        try
-        {
-            var result = await ApiService.UpdateVehicleAsync(_currentVehicle);
-
-            if (result)
-            {
-                Snackbar.Add("Vehicle updated successfully", Severity.Success);
-                await LoadVehicles();
-                CloseDialog();
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
-    }
-
-    private async Task<IEnumerable<Customer>> SearchCustomers(string value, CancellationToken token)
-    {
-        if (string.IsNullOrEmpty(value)) return _customers;
-
-        return _customers.Where(x =>
-            (x.Name?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false) ||
-            (x.Nif?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false));
-    }
-
-    private bool FilterFunc1(Vehicle vehicle) => FilterFunc(vehicle, _searchString);
-
-    private bool FilterFunc(Vehicle vehicle, string searchString)
-    {
-        if (string.IsNullOrWhiteSpace(searchString)) return true;
-
-        return (vehicle.Plate?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
-               (vehicle.Brand?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
-               (vehicle.Model?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false);
+        await VM.InitializeCommand.ExecuteAsync(null);
     }
 }
