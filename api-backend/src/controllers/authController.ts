@@ -6,29 +6,41 @@ import prisma from '../config/db';
 //REGISTER
 export const register = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { email, password, username, role } = req.body; 
-    
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const { email, password, username, role } = req.body;
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: email },
+          { username: username }
+        ]
+      }
+    });
+
     if (existingUser) {
-      return res.status(400).json({ message: "Email already on DB" });
+      const conflictField = existingUser.email === email ? "Email" : "Username";
+      return res.status(409).json({ 
+        message: `${conflictField} is already in use.` 
+      });
     }
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const user = await prisma.user.create({
-      data: { 
-        email, 
-        password: hashedPassword, 
+      data: {
+        email,
+        password: hashedPassword,
         username,
         role
       }
     });
-    
+
     const { password: _, ...userNoPass } = user;
     res.status(201).json(userNoPass);
+
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "Server error" });
+    console.error("Error on register:", e);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 

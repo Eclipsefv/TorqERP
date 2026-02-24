@@ -134,7 +134,6 @@ namespace TorqERP.Services
         {
             try
             {
-                //I have to do this because my API follows camelcase convention standard so in my data model in C# its "Email" But in my API i use "email"
                 var options = new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -146,15 +145,16 @@ namespace TorqERP.Services
                 {
                     return true;
                 }
-
-                var errorBody = await response.Content.ReadAsStringAsync();
-                System.Diagnostics.Debug.WriteLine($"Error response from API: {errorBody}");
-                return false;
+                var errorMessage = await GetErrorMessageAsync(response);
+                throw new Exception(errorMessage);
             }
-            catch (Exception ex)
+            catch (HttpRequestException httpEx)
             {
-                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
-                return false;
+                throw new Exception($"Network error: {httpEx.Message}");
+            }
+            catch (Exception)
+            {
+                throw;
             }
         }
 
