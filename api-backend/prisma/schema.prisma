@@ -17,7 +17,7 @@ model User {
   id            Int      @id @default(autoincrement())
   email         String   @unique
   username      String   @unique
-  password      String  
+  password      String
   role          Role     @default(USER)
   active        Boolean  @default(true)
   creation_date DateTime @default(now())
@@ -30,32 +30,37 @@ enum ProductType {
 }
 
 model Product {
-  id            Int         @id @default(autoincrement())
-  sku           String      @unique
-  name          String      @unique
-  description   String?
-  type          ProductType @default(ITEM)
-  buyPrice      Decimal     @default(0.0)
-  sellPrice     Decimal     @default(0.0)
-  taxRate       Decimal     @default(21.0)
-//only if physical item
-  stock         Float?      @default(0)
-  minStock      Float?      @default(0)
-  location      String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id          Int         @id @default(autoincrement())
+  sku         String      @unique
+  name        String      @unique
+  description String?
+  type        ProductType @default(ITEM)
+  buyPrice    Decimal     @default(0.0)
+  sellPrice   Decimal     @default(0.0)
+  taxRate     Decimal     @default(21.0)
+  //only if physical item
+  stock       Float?      @default(0)
+  minStock    Float?      @default(0)
+  location    String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  workOrderLines WorkOrderLine[]
+  invoiceLines   InvoiceLine[]
 }
 
 model Customer {
-  id           Int       @id @default(autoincrement())
-  nif          String    @unique
-  name String
-  address    String?
-  phonenumber     String?
-  email        String?   @unique
-  vehicles     Vehicle[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id          Int       @id @default(autoincrement())
+  nif         String    @unique
+  name        String
+  address     String?
+  phonenumber String?
+  email       String?   @unique
+  vehicles    Vehicle[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  invoices Invoice[]
 }
 
 model Vehicle {
@@ -68,4 +73,89 @@ model Vehicle {
   customer   Customer @relation(fields: [customerId], references: [id])
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  workOrders WorkOrder[]
+}
+
+enum WorkOrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELLED
+}
+
+model WorkOrder {
+  id          Int             @id @default(autoincrement())
+  orderNumber String          @unique
+  description String?
+  status      WorkOrderStatus @default(PENDING)
+
+  vehicleId Int
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id])
+
+  lines WorkOrderLine[]
+
+  invoice Invoice?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+}
+
+model WorkOrderLine {
+  id       Int     @id @default(autoincrement())
+  quantity Float   @default(1)
+  price    Decimal
+  discount Decimal @default(0.0)
+
+  workOrderId Int
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Invoice {
+  id            Int           @id @default(autoincrement())
+  invoiceNumber String        @unique
+  status        InvoiceStatus @default(DRAFT)
+
+  subtotal Decimal @default(0.0)
+  taxTotal Decimal @default(0.0)
+  total    Decimal @default(0.0)
+
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  workOrderId Int?       @unique
+  workOrder   WorkOrder? @relation(fields: [workOrderId], references: [id])
+
+  lines InvoiceLine[]
+
+  createdAt DateTime  @default(now())
+  issueDate DateTime  @default(now())
+  dueDate   DateTime?
+}
+
+// Las líneas de la factura
+model InvoiceLine {
+  id          Int     @id @default(autoincrement())
+  description String
+  quantity    Float
+  unitPrice   Decimal
+  taxRate     Decimal @default(21.0)
+  total       Decimal
+
+  invoiceId Int
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  productId Int?
+  product   Product? @relation(fields: [productId], references: [id])
 }
