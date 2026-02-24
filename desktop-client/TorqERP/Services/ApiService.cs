@@ -51,6 +51,12 @@ namespace TorqERP.Services
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 };
 
+                var jsonDebug = JsonSerializer.Serialize(newProduct, options);
+                System.Diagnostics.Debug.WriteLine("---------- PRODUCT JSON ----------");
+                System.Diagnostics.Debug.WriteLine(jsonDebug);
+                System.Diagnostics.Debug.WriteLine("----------------------------------");
+
+
                 var response = await _httpClient.PostAsJsonAsync("/api/products/insert", newProduct, options);
 
                 if (response.IsSuccessStatusCode)
@@ -58,14 +64,16 @@ namespace TorqERP.Services
                     return true;
                 }
 
-                var errorBody = await response.Content.ReadAsStringAsync();
-                System.Diagnostics.Debug.WriteLine($"Error response from API: {errorBody}");
-                return false;
+                var errorMessage = await GetErrorMessageAsync(response);
+                throw new Exception(errorMessage);
             }
-            catch (Exception ex)
+            catch (HttpRequestException httpEx)
             {
-                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
-                return false;
+                throw new Exception($"Network error: {httpEx.Message}");
+            }
+            catch (Exception)
+            {
+                throw;
             }
         }
 
@@ -73,33 +81,32 @@ namespace TorqERP.Services
         {
             try
             {
+                if (updatedProduct.Id == 0)
+                    throw new Exception("Product ID is not valid for update");
+
                 var options = new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 };
 
-                if (string.IsNullOrEmpty(updatedProduct.Id.ToString()) || updatedProduct.Id == 0)
-                {
-                    System.Diagnostics.Debug.WriteLine("Error, product id null");
-                    return false;
-                }
-
                 string url = $"/api/products/updateProduct/{updatedProduct.Id}";
-
                 var response = await _httpClient.PutAsJsonAsync(url, updatedProduct, options);
 
                 if (response.IsSuccessStatusCode)
                 {
                     return true;
                 }
-                var errorBody = await response.Content.ReadAsStringAsync();
-                System.Diagnostics.Debug.WriteLine($"Error response from api: {errorBody}");
-                return false;
+
+                var errorMessage = await GetErrorMessageAsync(response);
+                throw new Exception(errorMessage);
             }
-            catch (Exception ex)
+            catch (HttpRequestException httpEx)
             {
-                System.Diagnostics.Debug.WriteLine($"Error on update: {ex.Message}");
-                return false;
+                throw new Exception($"Network error: {httpEx.Message}");
+            }
+            catch (Exception)
+            {
+                throw;
             }
         }
 

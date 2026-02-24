@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db.js';
 
-export const insertProduct = async (req: Request, res: Response) => {
+export const insertProduct = async (req: Request, res: Response): Promise<any> => {
   try {
     const { 
       sku, name, description, type, 
@@ -10,7 +10,15 @@ export const insertProduct = async (req: Request, res: Response) => {
     } = req.body;
 
     if (!sku || !name) {
-      return res.status(400).json({ message: "sku and name are required" });
+      return res.status(400).json({ message: "SKU and name are required" });
+    }
+
+    const existingProduct = await prisma.product.findFirst({
+  where: { sku: sku }
+});
+
+    if (existingProduct) {
+      return res.status(409).json({ message: "SKU already on db" });
     }
 
     const newProduct = await prisma.product.create({
@@ -18,7 +26,7 @@ export const insertProduct = async (req: Request, res: Response) => {
         sku,
         name,
         description,
-        type: type || 'ITEM', // item as default just in case
+        type: type || 'ITEM',
         buyPrice: buyPrice || 0.0,
         sellPrice: sellPrice || 0.0,
         taxRate: taxRate || 21.0,
@@ -29,11 +37,11 @@ export const insertProduct = async (req: Request, res: Response) => {
     });
 
     res.status(201).json(newProduct);
+
   } catch (error: any) {
-    if (error.code === 'P2002') {
-      return res.status(400).json({ message: "sku already on db" });
-    }
-    res.status(500).json({ error: error.message });
+    console.error("Error inserting product:", error);
+
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 

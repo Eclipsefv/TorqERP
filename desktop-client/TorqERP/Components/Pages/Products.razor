@@ -1,37 +1,26 @@
 ﻿@page "/inventory"
-@using System.Globalization
-@using TorqERP.Services
+@using TorqERP.ViewModels
 @using TorqERP.DataModels
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@inject ApiService ApiService
-@inject ISnackbar Snackbar
+@inject ProductsViewModel VM
 
 <MudText Typo="Typo.h4" Class="mb-4" Color="Color.Primary">Inventory Management</MudText>
-<MudTable Items="@_products"
-          Hover="true"
-          Breakpoint="Breakpoint.Sm"
-          Loading="@_loading"
-          LoadingProgressColor="Color.Info"
-          Filter="new Func<Product,bool>(FilterFunc1)"
-          Dense="true"
-          OnRowClick="@((TableRowClickEventArgs<Product> args) => OnRowClick(args))"
+
+<MudTable Items="VM.Products" Hover="true" Breakpoint="Breakpoint.Sm" Loading="VM.IsLoading"
+          LoadingProgressColor="Color.Info" Filter="new Func<Product, bool>(VM.FilterProduct)"
+          Dense="true" OnRowClick="@((TableRowClickEventArgs<Product> args) => VM.SetupEditMode(args.Item))"
           RowClass="cursor-pointer">
 
     <ToolBarContent>
         <MudSpacer />
-        <MudTextField @bind-Value="_searchString"
-                      Placeholder="Search by SKU or Name"
-                      Adornment="Adornment.Start"
-                      AdornmentIcon="@Icons.Material.Filled.Search"
-                      IconSize="Size.Medium"
-                      Class="mt-0" />
-        
-        <MudText Typo="Typo.h6">Product List</MudText>
+        <MudTextField @bind-Value="VM.SearchString" Placeholder="Search by SKU or Name"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium" Class="mt-0" Immediate="true" />
+
+        <MudText Typo="Typo.h6" Class="ml-4">Product List</MudText>
         <MudSpacer />
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   OnClick="OpenCreateDialog"
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="VM.OpenCreateDialog"
                    StartIcon="@Icons.Material.Filled.Add">
             Add Product
         </MudButton>
@@ -47,40 +36,27 @@
     </HeaderContent>
 
     <RowTemplate>
-        <MudTd DataLabel="SKU">
-            <MudText Typo="Typo.body2" Color="Color.Default"><b>@context.Sku</b></MudText>
-        </MudTd>
-
+        <MudTd DataLabel="SKU"><b>@context.Sku</b></MudTd>
         <MudTd DataLabel="Name">@context.Name</MudTd>
-
-            <MudTd DataLabel="Type">
-                <MudChip T="string" Variant="Variant.Text"
-                         Color="@(context.Type == ProductType.SERVICE ? Color.Secondary : Color.Primary)"
-                         Size="Size.Small">
-                    @context.Type.ToString()
+        <MudTd DataLabel="Type">
+            <MudChip T="string" Variant="Variant.Text"
+                     Color="@(context.Type == ProductType.SERVICE ? Color.Secondary : Color.Primary)" Size="Size.Small">
+                @context.Type.ToString()
             </MudChip>
         </MudTd>
-
-        <MudTd DataLabel="Sell Price">
-            @context.SellPrice.ToString("C", _euroCulture)
-        </MudTd>
-        @*Stock typw colours*@
+        <MudTd DataLabel="Sell Price">@context.SellPrice.ToString("C", VM.EuroCulture)</MudTd>
         <MudTd DataLabel="Stock">
             @if (context.Stock <= context.MinStock && context.Type == ProductType.ITEM)
             {
-                <MudText Color="Color.Error" Typo="Typo.body2">
-                    <b>@context.Stock</b> (Low Stock)
-                </MudText>
+                <MudText Color="Color.Error" Typo="Typo.body2"><b>@context.Stock</b> (Low Stock)</MudText>
             }
             else
             {
+
                 @context.Stock
             }
         </MudTd>
-
-        <MudTd DataLabel="Location">
-            @(string.IsNullOrEmpty(context.Location) ? "N/A" : context.Location)
-        </MudTd>
+        <MudTd DataLabel="Location">@(string.IsNullOrEmpty(context.Location) ? "N/A" : context.Location)</MudTd>
     </RowTemplate>
 
     <PagerContent>
@@ -88,26 +64,24 @@
     </PagerContent>
 </MudTable>
 
-@*dialog for product creation, added capability to edit from this same form*@
-<MudDialog @bind-Visible="_isDialogVisible" Options="_dialogOptions">
+@* Dialog *@
+<MudDialog @bind-Visible="VM.IsDialogVisible" Options="VM.DialogOptions">
     <TitleContent>
         <MudText Typo="Typo.h6">
-            <MudIcon Icon="@(_isEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.AddCircleOutline)" Class="mr-3" />
-            @(_isEditMode ? $"Edit Product: {_currentProduct.Sku}" : "Create Product")
+            <MudIcon Icon="@(VM.IsEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.AddCircleOutline)" Class="mr-3" />
+            @(VM.IsEditMode ? $"Edit Product: {VM.CurrentProduct.Sku}" : "Create Product")
         </MudText>
     </TitleContent>
     <DialogContent>
         <MudGrid>
             <MudItem xs="12" sm="6">
-                @*blocks sku on edit just in case some user tries to edit it*@
-                <MudTextField T="string" Label="SKU" @bind-Value="_currentProduct.Sku" Required="true" Variant="Variant.Outlined" Disabled="@_isEditMode" />
+                <MudTextField T="string" Label="SKU" @bind-Value="VM.CurrentProduct.Sku" Required="true" Variant="Variant.Outlined" Disabled="VM.IsEditMode" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudTextField T="string" Label="Name" @bind-Value="_currentProduct.Name" Required="true" Variant="Variant.Outlined" />
+                <MudTextField T="string" Label="Name" @bind-Value="VM.CurrentProduct.Name" Required="true" Variant="Variant.Outlined" />
             </MudItem>
-
             <MudItem xs="12" sm="6">
-                <MudSelect T="ProductType" Label="Type" Variant="Variant.Outlined" @bind-Value="_currentProduct.Type" AnchorOrigin="Origin.BottomCenter">
+                <MudSelect T="ProductType" Label="Type" Variant="Variant.Outlined" @bind-Value="VM.CurrentProduct.Type">
                     @foreach (ProductType type in Enum.GetValues(typeof(ProductType)))
                     {
                         <MudSelectItem Value="@type">@type</MudSelectItem>
@@ -115,195 +89,34 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudTextField T="string" Label="Location" @bind-Value="_currentProduct.Location" Variant="Variant.Outlined" />
-            </MudItem>
-
-            <MudItem xs="12" sm="4">
-                <MudNumericField @bind-Value="_currentProduct.BuyPrice" Label="Buy Price" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro" />
+                <MudTextField T="string" Label="Location" @bind-Value="VM.CurrentProduct.Location" Variant="Variant.Outlined" />
             </MudItem>
             <MudItem xs="12" sm="4">
-                <MudNumericField @bind-Value="_currentProduct.SellPrice" Label="Sell Price" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro" />
+                <MudNumericField @bind-Value="VM.CurrentProduct.BuyPrice" Label="Buy Price" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro" />
             </MudItem>
             <MudItem xs="12" sm="4">
-                <MudNumericField @bind-Value="_currentProduct.TaxRate" Label="Tax %" Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentText="%" />
+                <MudNumericField @bind-Value="VM.CurrentProduct.SellPrice" Label="Sell Price" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro" />
             </MudItem>
-
-            <MudItem xs="12" sm="6">
-                <MudNumericField @bind-Value="_currentProduct.Stock" Label="Stock" Variant="Variant.Outlined" Min="0" />
+            <MudItem xs="12" sm="4">
+                <MudNumericField @bind-Value="VM.CurrentProduct.TaxRate" Label="Tax %" Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentText="%" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudNumericField @bind-Value="_currentProduct.MinStock" Label="Min Stock" Variant="Variant.Outlined" Min="0" />
+                <MudNumericField @bind-Value="VM.CurrentProduct.Stock" Label="Stock" Variant="Variant.Outlined" Min="0" />
             </MudItem>
-
+            <MudItem xs="12" sm="6">
+                <MudNumericField @bind-Value="VM.CurrentProduct.MinStock" Label="Min Stock" Variant="Variant.Outlined" Min="0" />
+            </MudItem>
             <MudItem xs="12">
-                <MudTextField T="string" Label="Description" @bind-Value="_currentProduct.Description" Variant="Variant.Outlined" Lines="3" />
+                <MudTextField T="string" Label="Description" @bind-Value="VM.CurrentProduct.Description" Variant="Variant.Outlined" Lines="3" />
             </MudItem>
         </MudGrid>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="CloseDialog">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveProduct">Save</MudButton>
+        <MudButton OnClick="VM.CloseDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="VM.SaveProductCommand.ExecuteAsync">Save</MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-
-    private bool _loading = true;
-    private string _searchString = "";
-    private List<Product> _products = new();
-
-    //dialog variables
-    private bool _isDialogVisible;
-    private Product _currentProduct = new();
-    private bool _isEditMode = false;
-    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
-
-    //this is to force everything to be in euros, if left default it would use your system's language's currency, mine is in english so I had to look up how to do this cause it kept showing all prices in GBP
-    private readonly CultureInfo _euroCulture = CultureInfo.GetCultureInfo("es-ES");
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadProducts();
-    }
-
-    private void OpenCreateDialog()
-    {
-        _isEditMode = false;
-        _currentProduct = new Product { Type = ProductType.ITEM };
-        _isDialogVisible = true;
-    }
-
-    private void CloseDialog() => _isDialogVisible = false;
-
-    private async Task LoadProducts()
-    {
-        _loading = true;
-        try
-        {
-            _products = await ApiService.GetProductsAsync();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add("Error loading products: " + ex.Message, Severity.Error);
-        }
-        finally
-        {
-            _loading = false;
-        }
-    }
-
-    //crud
-    private async Task SaveProduct()
-    {
-        if (string.IsNullOrWhiteSpace(_currentProduct.Name))
-        {
-            Snackbar.Add("Name is required", Severity.Warning);
-            return;
-        }
-
-        if (_currentProduct.SellPrice < _currentProduct.BuyPrice)
-        {
-            Snackbar.Add($"Cant sell lower than buy price", Severity.Warning);
-            return;
-        }
-
-        if (_currentProduct.SellPrice < 0 || _currentProduct.BuyPrice < 0)
-        {
-            Snackbar.Add("Prices cant be negative", Severity.Warning);
-            return;
-        }
-        if (string.IsNullOrWhiteSpace(_currentProduct.Sku))
-        {
-            Snackbar.Add("SKU Missing.", Severity.Warning);
-            return;
-        }
-        if (_isEditMode)
-        {
-            await UpdateProductLogic();
-        }
-        else
-        {
-            await CreateProductLogic();
-        }
-    }
-
-    private async Task CreateProductLogic()
-    {
-        try
-        {
-            var success = await ApiService.CreateProductAsync(_currentProduct);
-
-            if (success)
-            {
-                await LoadProducts();
-                CloseDialog();
-            }
-            else
-            {
-                Snackbar.Add("Error");
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
-        }
-    }
-
-    private async Task UpdateProductLogic()
-    {
-        try
-        {
-            var success = await ApiService.UpdateProductAsync(_currentProduct);
-
-            if (success)
-            {
-                await LoadProducts();
-                CloseDialog();
-            }
-            else
-            {
-                Snackbar.Add("Error updating product");
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
-        }
-    }
-
-    private void OnRowClick(TableRowClickEventArgs<Product> args)
-    {
-        _isEditMode = true;
-        _currentProduct = new Product
-            {
-                Id = args.Item.Id,
-                Sku = args.Item.Sku,
-                Name = args.Item.Name,
-                Type = args.Item.Type,
-                Location = args.Item.Location,
-                BuyPrice = args.Item.BuyPrice,
-                SellPrice = args.Item.SellPrice,
-                TaxRate = args.Item.TaxRate,
-                Stock = args.Item.Stock,
-                MinStock = args.Item.MinStock,
-                Description = args.Item.Description
-            };
-        _isDialogVisible = true;
-    }
-
-    //filters
-    private bool FilterFunc1(Product product) => FilterFunc(product, _searchString);
-
-    private bool FilterFunc(Product product, string searchString)
-    {
-        if (string.IsNullOrWhiteSpace(searchString)) return true;
-
-        if (product.Name.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
-
-        if (product.Sku.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
-
-        if (!string.IsNullOrEmpty(product.Location) && product.Location.Contains(searchString, StringComparison.OrdinalIgnoreCase)) return true;
-
-        return false;
-    }
+    protected override async Task OnInitializedAsync() => await VM.InitializeCommand.ExecuteAsync(null);
 }
