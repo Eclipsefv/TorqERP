@@ -144,7 +144,6 @@ model Invoice {
   dueDate   DateTime?
 }
 
-// Las líneas de la factura
 model InvoiceLine {
   id          Int     @id @default(autoincrement())
   description String

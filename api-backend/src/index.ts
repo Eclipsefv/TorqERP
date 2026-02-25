@@ -9,6 +9,7 @@ import productRouter from './routes/productRouter';
 import userRouter from './routes/userRouter';
 import customerRouter from './routes/customerRouter';
 import vehicleRouter from './routes/vehicleRouter';
+import workOrderRouter from './routes/workOrderRouter';
 
 dotenv.config();
 
@@ -31,6 +32,9 @@ app.use('/api/users', userRouter);
 
 //customers
 app.use('/api/customers', customerRouter)
+
+//wOrdersa
+app.use('/api/workOrders', workOrderRouter)
 
 //health check
 app.get('/', (req, res) => {

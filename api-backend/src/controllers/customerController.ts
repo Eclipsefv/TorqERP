@@ -12,7 +12,6 @@ export const createCustomer = async (req: Request, res: Response) => {
   if (email) email = email.toLowerCase().trim();
   if (nif) nif = nif.toUpperCase().trim();
 
-  // 1. Check if it's a "Fake" Spanish ID
   if (nif && !idCheck(nif)) {
     return res.status(400).json({ 
       message: "The DNI/NIE format is Spanish, but the control letter is incorrect." 
