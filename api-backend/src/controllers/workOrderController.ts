@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../config/db.js';
 import getNextSequence from '../helpers/invoiceWorkOrderGenerator';
 
+//work orders
 export const createWorkOrder = async (req: Request, res: Response) => {
   try {
     const { vehicleId, description } = req.body;
@@ -47,6 +48,76 @@ export const addLineToWorkOrder = async (req: Request, res: Response) => {
   }
 };
 
+//general get
+export const getWorkOrders = async (req: Request, res: Response) => {
+  try {
+    const orders = await prisma.workOrder.findMany({
+      include: {
+        vehicle: {
+          select: {
+            plate: true,
+            brand: true,
+            model: true,
+            customer: {
+              select: {
+                name: true
+              }
+            }
+          }
+        },
+        _count: {
+          select: { lines: true }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    res.status(200).json(orders);
+  } catch (error: any) {
+    res.status(500).json({ 
+      error: "Error fetching Work orders", 
+      message: error.message 
+    });
+  }
+};
+
+//for detailed work order
+export const getWorkOrderById = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const order = await prisma.workOrder.findUnique({
+      where: { id: Number(id) },
+      include: {
+        vehicle: {
+          include: { customer: true }
+        },
+        lines: {
+          include: {
+            product: {
+              select: { name: true, sku: true}
+            }
+          }
+        },
+        invoice: {
+          select: { invoiceNumber: true, total: true }
+        }
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Nonexistant work order" });
+    }
+
+    res.status(200).json(order);
+  } catch (error: any) {
+    res.status(500).json({ error: "Error on search", message: error.message });
+  }
+};
+
+//invoices
 export const convertToInvoice = async (req: Request, res: Response) => {
   const { workOrderId } = req.params;
 
