@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Net.Http.Json;
-using TorqERP.DataModels;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
+using TorqERP.DataModels;
 
 namespace TorqERP.Services
 {
@@ -50,12 +51,6 @@ namespace TorqERP.Services
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 };
-
-                var jsonDebug = JsonSerializer.Serialize(newProduct, options);
-                System.Diagnostics.Debug.WriteLine("---------- PRODUCT JSON ----------");
-                System.Diagnostics.Debug.WriteLine(jsonDebug);
-                System.Diagnostics.Debug.WriteLine("----------------------------------");
-
 
                 var response = await _httpClient.PostAsJsonAsync("/api/products/insert", newProduct, options);
 
@@ -364,6 +359,33 @@ namespace TorqERP.Services
                 throw;
             }
         }
+
+        //work orders
+        public async Task<List<WorkOrder>> GetWorkOrdersAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("api/workOrders/getWorkOrders");
+                if (response.IsSuccessStatusCode)
+                {
+
+                    var options = new JsonSerializerOptions
+                    {
+                        Converters = { new JsonStringEnumConverter() },
+                        PropertyNameCaseInsensitive = true
+                    };
+                    return await response.Content.ReadFromJsonAsync<List<WorkOrder>>(options)
+                           ?? new List<WorkOrder>();
+                }
+                return new List<WorkOrder>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
+                return new List<WorkOrder>();
+            }
+        }
+
 
         //Private functions
         private async Task<string> GetErrorMessageAsync(HttpResponseMessage response)

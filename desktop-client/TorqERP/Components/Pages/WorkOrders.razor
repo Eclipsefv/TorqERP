@@ -1,0 +1,156 @@
+﻿@page "/workorders"
+@using TorqERP.ViewModels
+@using TorqERP.DataModels
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject WorkOrdersViewModel VM
+
+<MudText Typo="Typo.h4" Class="mb-4" Color="Color.Primary">Work Orders</MudText>
+
+<MudTable Items="VM.WorkOrders"
+          Loading="VM.IsLoading"
+          LoadingProgressColor="Color.Info"
+          Hover="true"
+          Dense="true"
+          Breakpoint="Breakpoint.Sm"
+          Elevation="1"
+          OnRowClick="@((TableRowClickEventArgs<WorkOrder> args) => VM.OnRowClick(args))"
+          RowClass="cursor-pointer"
+          Filter="new Func<WorkOrder, bool>(VM.FilterWorkOrder)">
+
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Registered Work Orders</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="VM.SearchString"
+                      Placeholder="Search by number, description or status"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium"
+                      Class="mt-0"
+                      Immediate="true" />
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="VM.OpenCreateDialog">
+            New Order
+        </MudButton>
+    </ToolBarContent>
+
+    <HeaderContent>
+        <MudTh>Order #</MudTh>
+        <MudTh>Description</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Vehicle</MudTh>
+        <MudTh>Lines</MudTh>
+        <MudTh>Created</MudTh>
+        <MudTh>Completed</MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="Order #">
+            <MudChip T="string" Color="Color.Primary" Variant="Variant.Text" Size="Size.Small">@context.OrderNumber</MudChip>
+        </MudTd>
+        <MudTd DataLabel="Description">@(context.Description ?? "—")</MudTd>
+        <MudTd DataLabel="Status">
+            @{
+                var (color, label) = WorkOrdersViewModel.GetStatusDisplay(context.Status);
+            }
+            <MudChip T="string" Color="@color" Variant="Variant.Filled" Size="Size.Small">@label</MudChip>
+        </MudTd>
+        <MudTd DataLabel="Vehicle">@context.VehicleId</MudTd>
+        <MudTd DataLabel="Lines">@context.Lines.Count</MudTd>
+        <MudTd DataLabel="Created">@context.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</MudTd>
+        <MudTd DataLabel="Completed">@(context.CompletedAt.HasValue? context.CompletedAt.Value.ToLocalTime().ToString("dd/MM/yyyy") : "—")</MudTd>
+    </RowTemplate>
+
+    <PagerContent>
+        <MudTablePager InfoFormat="{first_item}-{last_item} of {all_items}" RowsPerPageString="Rows per page:" />
+    </PagerContent>
+</MudTable>
+
+<MudDialog @bind-Visible="VM.IsDialogVisible" Options="VM.DialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@(VM.IsEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.Build)" Class="mr-3" />
+            @(VM.IsEditMode ? $"Work order: {VM.CurrentWorkOrder.OrderNumber}" : "New work order")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Order Number" @bind-Value="VM.CurrentWorkOrder.OrderNumber"
+                              Variant="Variant.Outlined" ReadOnly="VM.IsEditMode" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                @{
+                    var (statusColor, statusLabel) = WorkOrdersViewModel.GetStatusDisplay(VM.CurrentWorkOrder.Status);
+                }
+                <MudTextField T="string" Label="Status" Value="@statusLabel"
+                              Variant="Variant.Outlined" ReadOnly="true"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Circle"
+                              AdornmentColor="@statusColor" />
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudTextField T="string" Label="Description" @bind-Value="VM.CurrentWorkOrder.Description"
+                              Variant="Variant.Outlined" Lines="2" ReadOnly="VM.IsEditMode" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudNumericField T="int" Label="Vehicle ID" @bind-Value="VM.CurrentWorkOrder.VehicleId"
+                                 Variant="Variant.Outlined" ReadOnly="VM.IsEditMode" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Created At"
+                              Value="@VM.CurrentWorkOrder.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")"
+                              Variant="Variant.Outlined" ReadOnly="true" />
+            </MudItem>
+
+            @if (VM.CurrentWorkOrder.CompletedAt.HasValue)
+            {
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" Label="Completed At"
+                                  Value="@VM.CurrentWorkOrder.CompletedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")"
+                                  Variant="Variant.Outlined" ReadOnly="true" />
+                </MudItem>
+            }
+
+            @if (VM.CurrentWorkOrder.Lines.Any())
+            {
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Order Lines</MudText>
+                    <MudTable Items="VM.CurrentWorkOrder.Lines" Dense="true" Elevation="0" Outlined="true">
+                        <HeaderContent>
+                            <MudTh>Product ID</MudTh>
+                            <MudTh>Qty</MudTh>
+                            <MudTh>Price</MudTh>
+                            <MudTh>Discount</MudTh>
+                            <MudTh>Total</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.ProductId</MudTd>
+                            <MudTd>@context.Quantity</MudTd>
+                            <MudTd>@context.Price.ToString("C")</MudTd>
+                            <MudTd>@context.Discount.ToString("C")</MudTd>
+                            <MudTd>@(((decimal)context.Quantity * (context.Price - context.Discount)).ToString("C"))</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="VM.CloseDialog">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await VM.InitializeCommand.ExecuteAsync(null);
+    }
+}
