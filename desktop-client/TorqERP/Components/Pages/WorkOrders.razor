@@ -100,8 +100,29 @@
             </MudItem>
 
             <MudItem xs="12" sm="6">
-                <MudNumericField T="int" Label="Vehicle ID" @bind-Value="VM.CurrentWorkOrder.VehicleId"
-                                 Variant="Variant.Outlined" ReadOnly="VM.IsEditMode" />
+                <MudAutocomplete T="Vehicle"
+                                 Label="Select Vehicle"
+                                 @bind-Value="VM.SelectedVehicle"
+                                 SearchFunc="@VM.SearchVehicles"
+                                 ToStringFunc="@(v => v == null ? null : $"{v.Plate} - {v.Model}")"
+                                 Variant="Variant.Outlined"
+                                 ReadOnly="VM.IsEditMode"
+                                 ResetValueOnEmptyText="true"
+                                 CoerceText="true"
+                                 AdornmentIcon="@Icons.Material.Filled.DirectionsCar"
+                                 AdornmentColor="Color.Primary">
+                    <ItemTemplate Context="vehicle">
+                        <MudText>
+                            <MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Size="Size.Small" Class="mr-2" />
+                            @vehicle.Plate <small class="ml-2" style="color:gray">@vehicle.Brand @vehicle.Brand</small>
+                        </MudText>
+                    </ItemTemplate>
+                    <NoItemsTemplate>
+                        <MudText Align="Align.Center" Class="px-4 py-2">
+                            No vehicles found
+                        </MudText>
+                    </NoItemsTemplate>
+                </MudAutocomplete>
             </MudItem>
 
             <MudItem xs="12" sm="6">

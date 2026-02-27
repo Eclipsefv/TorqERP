@@ -44,10 +44,29 @@ namespace TorqERP.ViewModels
 
         public DialogOptions DialogOptions { get; } = new() { MaxWidth = MaxWidth.Medium, FullWidth = true };
 
+        [ObservableProperty]
+        private List<Vehicle> _vehicles = new();
+
+        [ObservableProperty]
+        private Vehicle? _selectedVehicle;
+
         [RelayCommand]
         public async Task InitializeAsync()
         {
-            await LoadWorkOrdersAsync();
+            await Task.WhenAll(LoadWorkOrdersAsync(), LoadVehiclesAsync());
+        }
+
+        [RelayCommand]
+        public async Task LoadVehiclesAsync()
+        {
+            try
+            {
+                Vehicles = await _apiService.GetVehiclesAsync();
+            }
+            catch (Exception ex)
+            {
+                _snackbar.Add("Error loading vehicles: " + ex.Message, Severity.Error);
+            }
         }
 
         [RelayCommand]
@@ -74,6 +93,7 @@ namespace TorqERP.ViewModels
         {
             IsEditMode = false;
             CurrentWorkOrder = new WorkOrder();
+            SelectedVehicle = null;
             IsDialogVisible = true;
         }
 
@@ -97,6 +117,29 @@ namespace TorqERP.ViewModels
                 Lines = args.Item.Lines
             };
             IsDialogVisible = true;
+        }
+        partial void OnCurrentWorkOrderChanged(WorkOrder? value)
+        {
+            if (value != null && Vehicles.Any())
+            {
+                SelectedVehicle = Vehicles.FirstOrDefault(v => v.Id == value.VehicleId);
+            }
+        }
+        public async Task<IEnumerable<Vehicle>> SearchVehicles(string value, CancellationToken token)
+        {
+            if (string.IsNullOrEmpty(value))
+                return Vehicles;
+
+            return Vehicles.Where(v =>
+                v.Plate.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                v.Model.Contains(value, StringComparison.OrdinalIgnoreCase));
+        }
+        partial void OnSelectedVehicleChanged(Vehicle? value)
+        {
+            if (value != null && CurrentWorkOrder != null)
+            {
+                CurrentWorkOrder.VehicleId = value.Id;
+            }
         }
 
         public bool FilterWorkOrder(WorkOrder workOrder)
