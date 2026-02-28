@@ -72,18 +72,21 @@
 <MudDialog @bind-Visible="VM.IsDialogVisible" Options="VM.DialogOptions">
     <TitleContent>
         <MudText Typo="Typo.h6">
-            <MudIcon Icon="@(VM.IsEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.Build)" Class="mr-3" />
-            @(VM.IsEditMode ? $"Work order: {VM.CurrentWorkOrder.OrderNumber}" : "New work order")
+            <MudIcon Icon="@(VM.IsEditMode? Icons.Material.Filled.Info : Icons.Material.Filled.Build)" Class="mr-3" />
+            @(VM.IsEditMode ? $"work order detail: {VM.CurrentWorkOrder.OrderNumber}" : "New work order")
         </MudText>
     </TitleContent>
     <DialogContent>
         <MudGrid>
-            <MudItem xs="12" sm="6">
-                <MudTextField T="string" Label="Order Number" @bind-Value="VM.CurrentWorkOrder.OrderNumber"
-                              Variant="Variant.Outlined" ReadOnly="VM.IsEditMode" />
-            </MudItem>
+            @if (VM.IsEditMode)
+            {
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" Label="Order Number" @bind-Value="VM.CurrentWorkOrder.OrderNumber"
+                                  Variant="Variant.Outlined" ReadOnly="true" />
+                </MudItem>
+            }
 
-            <MudItem xs="12" sm="6">
+            <MudItem xs="12" sm="@(VM.IsEditMode ? 6 : 12)">
                 @{
                     var (statusColor, statusLabel) = WorkOrdersViewModel.GetStatusDisplay(VM.CurrentWorkOrder.Status);
                 }
@@ -95,7 +98,7 @@
             </MudItem>
 
             <MudItem xs="12">
-                <MudTextField T="string" Label="Description" @bind-Value="VM.CurrentWorkOrder.Description"
+                <MudTextField T="string" Label="Description / Fault" @bind-Value="VM.CurrentWorkOrder.Description"
                               Variant="Variant.Outlined" Lines="2" ReadOnly="VM.IsEditMode" />
             </MudItem>
 
@@ -107,21 +110,14 @@
                                  ToStringFunc="@(v => v == null ? null : $"{v.Plate} - {v.Model}")"
                                  Variant="Variant.Outlined"
                                  ReadOnly="VM.IsEditMode"
-                                 ResetValueOnEmptyText="true"
-                                 CoerceText="true"
                                  AdornmentIcon="@Icons.Material.Filled.DirectionsCar"
                                  AdornmentColor="Color.Primary">
                     <ItemTemplate Context="vehicle">
                         <MudText>
                             <MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Size="Size.Small" Class="mr-2" />
-                            @vehicle.Plate <small class="ml-2" style="color:gray">@vehicle.Brand @vehicle.Brand</small>
+                            @vehicle.Plate <small class="ml-2" style="color:gray">@vehicle.Brand @vehicle.Model</small>
                         </MudText>
                     </ItemTemplate>
-                    <NoItemsTemplate>
-                        <MudText Align="Align.Center" Class="px-4 py-2">
-                            No vehicles found
-                        </MudText>
-                    </NoItemsTemplate>
                 </MudAutocomplete>
             </MudItem>
 
@@ -130,42 +126,69 @@
                               Value="@VM.CurrentWorkOrder.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")"
                               Variant="Variant.Outlined" ReadOnly="true" />
             </MudItem>
+            <MudItem xs="12">
+                <div class="d-flex align-center justify-space-between mb-2">
+                    <MudText Typo="Typo.subtitle1"><b>Work Lines</b></MudText>
+                    <MudButton StartIcon="@Icons.Material.Filled.Add"
+                               Size="Size.Small"
+                               Variant="Variant.Filled"
+                               Color="Color.Secondary"
+                               OnClick="VM.AddEmptyLine">
+                        Add Line
+                    </MudButton>
+                </div>
 
-            @if (VM.CurrentWorkOrder.CompletedAt.HasValue)
-            {
-                <MudItem xs="12" sm="6">
-                    <MudTextField T="string" Label="Completed At"
-                                  Value="@VM.CurrentWorkOrder.CompletedAt.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")"
-                                  Variant="Variant.Outlined" ReadOnly="true" />
-                </MudItem>
-            }
+                <MudTable Items="VM.CurrentWorkOrder.Lines" Dense="true" Elevation="0" Outlined="true" Hover="true">
+                    <HeaderContent>
+                        <MudTh>Product ID</MudTh>
+                        <MudTh>Qty</MudTh>
+                        <MudTh>Price</MudTh>
+                        <MudTh>Disc.</MudTh>
+                        <MudTh>Total</MudTh>
+                        <MudTh Style="width: 50px"></MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="line">
+                        <MudTd>
+                            @if (line.Id == 0)
+                            {
+                                <MudNumericField @bind-Value="line.ProductId" Margin="Margin.Dense" Variant="Variant.Text" Min="1" />
+                            }
+                            else
+                            {
+                                @line.ProductId
+                            }
+                        </MudTd>
+                        <MudTd>
+                            <MudNumericField @bind-Value="line.Quantity" Margin="Margin.Dense" Variant="Variant.Text" Min="0.1f" />
+                        </MudTd>
+                        <MudTd>
+                            <MudNumericField @bind-Value="line.Price" Margin="Margin.Dense" Variant="Variant.Text" Format="N2" />
+                        </MudTd>
+                        <MudTd>
+                            <MudNumericField @bind-Value="line.Discount" Margin="Margin.Dense" Variant="Variant.Text" Format="N2" />
+                        </MudTd>
+                        <MudTd>
+                            @(((decimal)line.Quantity * (line.Price - line.Discount)).ToString("C"))
+                        </MudTd>
+                        <MudTd>
+                            @if (line.Id == 0)
+                            {
 
-            @if (VM.CurrentWorkOrder.Lines.Any())
-            {
-                <MudItem xs="12">
-                    <MudText Typo="Typo.subtitle2" Class="mb-2">Order Lines</MudText>
-                    <MudTable Items="VM.CurrentWorkOrder.Lines" Dense="true" Elevation="0" Outlined="true">
-                        <HeaderContent>
-                            <MudTh>Product ID</MudTh>
-                            <MudTh>Qty</MudTh>
-                            <MudTh>Price</MudTh>
-                            <MudTh>Discount</MudTh>
-                            <MudTh>Total</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd>@context.ProductId</MudTd>
-                            <MudTd>@context.Quantity</MudTd>
-                            <MudTd>@context.Price.ToString("C")</MudTd>
-                            <MudTd>@context.Discount.ToString("C")</MudTd>
-                            <MudTd>@(((decimal)context.Quantity * (context.Price - context.Discount)).ToString("C"))</MudTd>
-                        </RowTemplate>
-                    </MudTable>
-                </MudItem>
-            }
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudItem>
         </MudGrid>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="VM.CloseDialog">Close</MudButton>
+        <MudButton OnClick="VM.CloseDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="@(() => VM.SaveWorkOrderCommand.ExecuteAsync(null))" 
+                   Disabled="VM.IsLoading">
+            @(VM.IsEditMode ? "Update Order" : "Save Order")
+        </MudButton>
     </DialogActions>
 </MudDialog>
 

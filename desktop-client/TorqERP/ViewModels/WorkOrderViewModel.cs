@@ -158,5 +158,62 @@ namespace TorqERP.ViewModels
             WorkOrderStatus.CANCELLED => (Color.Error, "Cancelled"),
             _ => (Color.Default, status.ToString())
         };
+
+        [RelayCommand]
+        public async Task SaveWorkOrderAsync()
+        {
+            if (SelectedVehicle == null)
+            {
+                _snackbar.Add("Boss, selecciona un vehículo o la orden irá a pie.", Severity.Warning);
+                return;
+            }
+
+            try
+            {
+                IsLoading = true;
+
+                if (!IsEditMode)
+                {
+                    var createdOrder = await _apiService.CreateWorkOrderAsync(CurrentWorkOrder);
+
+                    if (createdOrder != null)
+                    {
+                        foreach (var line in CurrentWorkOrder.Lines)
+                        {
+                            line.WorkOrderId = createdOrder.Id;
+                            await _apiService.AddWorkOrderLineAsync(line);
+                        }
+
+                        _snackbar.Add($"Orden {createdOrder.OrderNumber} creada con éxito.", Severity.Success);
+                    }
+                }
+                else
+                {
+                    //ypdate logic here
+                }
+
+                IsDialogVisible = false;
+                await LoadWorkOrdersAsync();
+            }
+            catch (Exception ex)
+            {
+                _snackbar.Add(ex.Message, Severity.Error);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        [RelayCommand]
+        public void AddEmptyLine()
+        {
+            CurrentWorkOrder.Lines.Add(new WorkOrderLine
+            {
+                WorkOrderId = CurrentWorkOrder.Id,
+                Quantity = 1
+            });
+            OnPropertyChanged(nameof(CurrentWorkOrder));
+        }
     }
 }
