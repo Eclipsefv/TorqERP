@@ -50,10 +50,26 @@ namespace TorqERP.ViewModels
         [ObservableProperty]
         private Vehicle? _selectedVehicle;
 
+        [ObservableProperty]
+        private List<Product> _products = new();
+
         [RelayCommand]
         public async Task InitializeAsync()
         {
-            await Task.WhenAll(LoadWorkOrdersAsync(), LoadVehiclesAsync());
+            await Task.WhenAll(LoadWorkOrdersAsync(), LoadVehiclesAsync(), LoadProductsAsync());
+        }
+
+        [RelayCommand]
+        public async Task LoadProductsAsync()
+        {
+            try
+            {
+                Products = await _apiService.GetProductsAsync();
+            }
+            catch (Exception ex)
+            {
+                _snackbar.Add("Error cargando productos: " + ex.Message, Severity.Error);
+            }
         }
 
         [RelayCommand]
@@ -158,6 +174,27 @@ namespace TorqERP.ViewModels
             WorkOrderStatus.CANCELLED => (Color.Error, "Cancelled"),
             _ => (Color.Default, status.ToString())
         };
+
+        public async Task<IEnumerable<Product>> SearchProducts(string value, CancellationToken token)
+        {
+            if (string.IsNullOrEmpty(value))
+                return Products;
+
+            return Products.Where(p =>
+                (p.Name?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (p.Sku?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                p.Id.ToString().Contains(value));
+        }
+
+        public void OnProductSelected(WorkOrderLine line, Product selectedProduct)
+        {
+            if (selectedProduct == null) return;
+
+            line.ProductId = selectedProduct.Id;
+            line.Price = selectedProduct.SellPrice; 
+
+            OnPropertyChanged(nameof(CurrentWorkOrder));
+        }
 
         [RelayCommand]
         public async Task SaveWorkOrderAsync()

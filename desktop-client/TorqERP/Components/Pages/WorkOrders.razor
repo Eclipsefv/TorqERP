@@ -73,7 +73,7 @@
     <TitleContent>
         <MudText Typo="Typo.h6">
             <MudIcon Icon="@(VM.IsEditMode? Icons.Material.Filled.Info : Icons.Material.Filled.Build)" Class="mr-3" />
-            @(VM.IsEditMode ? $"work order detail: {VM.CurrentWorkOrder.OrderNumber}" : "New work order")
+            @(VM.IsEditMode ? $"Work Order Detail: {VM.CurrentWorkOrder.OrderNumber}" : "New Work Order")
         </MudText>
     </TitleContent>
     <DialogContent>
@@ -126,6 +126,7 @@
                               Value="@VM.CurrentWorkOrder.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")"
                               Variant="Variant.Outlined" ReadOnly="true" />
             </MudItem>
+
             <MudItem xs="12">
                 <div class="d-flex align-center justify-space-between mb-2">
                     <MudText Typo="Typo.subtitle1"><b>Work Lines</b></MudText>
@@ -140,7 +141,8 @@
 
                 <MudTable Items="VM.CurrentWorkOrder.Lines" Dense="true" Elevation="0" Outlined="true" Hover="true">
                     <HeaderContent>
-                        <MudTh>Product ID</MudTh>
+                        <MudTh>Product</MudTh>
+                        <MudTh>SKU</MudTh>
                         <MudTh>Qty</MudTh>
                         <MudTh>Price</MudTh>
                         <MudTh>Disc.</MudTh>
@@ -148,33 +150,43 @@
                         <MudTh Style="width: 50px"></MudTh>
                     </HeaderContent>
                     <RowTemplate Context="line">
-                        <MudTd>
+                        <MudTd DataLabel="Product">
                             @if (line.Id == 0)
                             {
-                                <MudNumericField @bind-Value="line.ProductId" Margin="Margin.Dense" Variant="Variant.Text" Min="1" />
+                                <MudAutocomplete T="Product"
+                                                 SearchFunc="@VM.SearchProducts"
+                                                 Value="@(VM.Products.FirstOrDefault(p => p.Id == line.ProductId))"
+                                                 ValueChanged="@(p => VM.OnProductSelected(line, p))"
+                                                 ToStringFunc="@(p => p == null ? "" : $"[{p.Sku}] {p.Name}")"
+                                                 Placeholder="Search by SKU or Name..."
+                                                 Margin="Margin.Dense"
+                                                 Dense="true"
+                                                 Variant="Variant.Text" />
                             }
                             else
                             {
-                                @line.ProductId
+                                @(VM.Products.FirstOrDefault(p => p.Id == line.ProductId)?.Name ?? $"ID: {line.ProductId}")
                             }
                         </MudTd>
-                        <MudTd>
+                        <MudTd DataLabel="SKU">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                <b>@(VM.Products.FirstOrDefault(p => p.Id == line.ProductId)?.Sku ?? "—")</b>
+                            </MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Qty">
                             <MudNumericField @bind-Value="line.Quantity" Margin="Margin.Dense" Variant="Variant.Text" Min="0.1f" />
                         </MudTd>
-                        <MudTd>
+                        <MudTd DataLabel="Price">
                             <MudNumericField @bind-Value="line.Price" Margin="Margin.Dense" Variant="Variant.Text" Format="N2" />
                         </MudTd>
-                        <MudTd>
+                        <MudTd DataLabel="Disc.">
                             <MudNumericField @bind-Value="line.Discount" Margin="Margin.Dense" Variant="Variant.Text" Format="N2" />
                         </MudTd>
-                        <MudTd>
+                        <MudTd DataLabel="Total">
                             @(((decimal)line.Quantity * (line.Price - line.Discount)).ToString("C"))
                         </MudTd>
                         <MudTd>
-                            @if (line.Id == 0)
-                            {
-
-                            }
+                            @*future actions*@
                         </MudTd>
                     </RowTemplate>
                 </MudTable>
@@ -185,7 +197,7 @@
         <MudButton OnClick="VM.CloseDialog">Cancel</MudButton>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
-                   OnClick="@(() => VM.SaveWorkOrderCommand.ExecuteAsync(null))" 
+                   OnClick="@(() => VM.SaveWorkOrderCommand.ExecuteAsync(null))"
                    Disabled="VM.IsLoading">
             @(VM.IsEditMode ? "Update Order" : "Save Order")
         </MudButton>
