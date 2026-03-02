@@ -201,7 +201,7 @@ namespace TorqERP.ViewModels
         {
             if (SelectedVehicle == null)
             {
-                _snackbar.Add("Boss, selecciona un vehículo o la orden irá a pie.", Severity.Warning);
+                _snackbar.Add("Select a vehicle.", Severity.Warning);
                 return;
             }
 
@@ -221,12 +221,27 @@ namespace TorqERP.ViewModels
                             await _apiService.AddWorkOrderLineAsync(line);
                         }
 
-                        _snackbar.Add($"Orden {createdOrder.OrderNumber} creada con éxito.", Severity.Success);
+                        _snackbar.Add($"Order {createdOrder.OrderNumber} created succesfully.", Severity.Success);
                     }
                 }
                 else
                 {
-                    //ypdate logic here
+                    var newLines = CurrentWorkOrder.Lines.Where(l => l.Id == 0).ToList();
+
+                    if (newLines.Any())
+                    {
+                        foreach (var line in newLines)
+                        {
+                            line.WorkOrderId = CurrentWorkOrder.Id;
+                            await _apiService.AddWorkOrderLineAsync(line);
+                        }
+
+                        _snackbar.Add($"{newLines.Count} New line ssaved succesfully", Severity.Success);
+                    }
+                    else
+                    {
+                        _snackbar.Add("No new lines to add", Severity.Info);
+                    }
                 }
 
                 IsDialogVisible = false;
