@@ -42,9 +42,15 @@ namespace TorqERP.DataModels
     public class WorkOrderLine
     {
         public int Id { get; set; }
+
         public float Quantity { get; set; } = 1f;
+
+        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
         public decimal Price { get; set; } = 0.0m;
+
+        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
         public decimal Discount { get; set; } = 0.0m;
+
         public int WorkOrderId { get; set; }
 
         [Required]

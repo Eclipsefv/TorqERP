@@ -120,19 +120,24 @@ namespace TorqERP.ViewModels
         public void OnRowClick(TableRowClickEventArgs<WorkOrder> args)
         {
             IsEditMode = true;
+            var selectedOrder = args.Item;
+
             CurrentWorkOrder = new WorkOrder
             {
-                Id = args.Item.Id,
-                OrderNumber = args.Item.OrderNumber,
-                Description = args.Item.Description,
-                Status = args.Item.Status,
-                VehicleId = args.Item.VehicleId,
-                CreatedAt = args.Item.CreatedAt,
-                UpdatedAt = args.Item.UpdatedAt,
-                CompletedAt = args.Item.CompletedAt,
-                Lines = args.Item.Lines
+                Id = selectedOrder.Id,
+                OrderNumber = selectedOrder.OrderNumber,
+                Description = selectedOrder.Description,
+                Status = selectedOrder.Status,
+                VehicleId = selectedOrder.VehicleId,
+                CreatedAt = selectedOrder.CreatedAt,
+                UpdatedAt = selectedOrder.UpdatedAt,
+                CompletedAt = selectedOrder.CompletedAt,
+                Lines = selectedOrder.Lines != null
+                        ? selectedOrder.Lines.ToList()
+                        : new List<WorkOrderLine>()
             };
             IsDialogVisible = true;
+            OnPropertyChanged(nameof(CurrentWorkOrder));
         }
         partial void OnCurrentWorkOrderChanged(WorkOrder? value)
         {

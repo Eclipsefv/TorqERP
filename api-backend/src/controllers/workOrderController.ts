@@ -65,6 +65,7 @@ export const getWorkOrders = async (req: Request, res: Response) => {
             }
           }
         },
+        lines: true,
         _count: {
           select: { lines: true }
         }
