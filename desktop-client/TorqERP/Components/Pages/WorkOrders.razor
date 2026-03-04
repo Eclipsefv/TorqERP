@@ -73,7 +73,7 @@
     <TitleContent>
         <MudText Typo="Typo.h6">
             <MudIcon Icon="@(VM.IsEditMode? Icons.Material.Filled.Info : Icons.Material.Filled.Build)" Class="mr-3" />
-            @(VM.IsEditMode ? $"Work Order Detail: {VM.CurrentWorkOrder.OrderNumber}" : "New Work Order")
+            @(VM.IsEditMode ? $"Work order detail: {VM.CurrentWorkOrder.OrderNumber}" : "New work order")
         </MudText>
     </TitleContent>
     <DialogContent>
@@ -87,19 +87,24 @@
             }
 
             <MudItem xs="12" sm="@(VM.IsEditMode ? 6 : 12)">
-                @{
-                    var (statusColor, statusLabel) = WorkOrdersViewModel.GetStatusDisplay(VM.CurrentWorkOrder.Status);
-                }
-                <MudTextField T="string" Label="Status" Value="@statusLabel"
-                              Variant="Variant.Outlined" ReadOnly="true"
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Circle"
-                              AdornmentColor="@statusColor" />
+                <MudSelect T="WorkOrderStatus" Label="Status" @bind-Value="VM.CurrentWorkOrder.Status"
+                           Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                    @foreach (var status in VM.StatusOptions)
+                    {
+                        var (color, label) = WorkOrdersViewModel.GetStatusDisplay(status);
+                        <MudSelectItem Value="@status">
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@Icons.Material.Filled.Circle" Color="@color" Size="Size.Small" Class="mr-2" />
+                                @label
+                            </div>
+                        </MudSelectItem>
+                    }
+                </MudSelect>
             </MudItem>
 
             <MudItem xs="12">
                 <MudTextField T="string" Label="Description / Fault" @bind-Value="VM.CurrentWorkOrder.Description"
-                              Variant="Variant.Outlined" Lines="2" ReadOnly="VM.IsEditMode" />
+                              Variant="Variant.Outlined" Lines="2" />
             </MudItem>
 
             <MudItem xs="12" sm="6">
@@ -161,8 +166,8 @@
                                                  SearchFunc="@VM.SearchProducts"
                                                  Value="@(VM.Products.FirstOrDefault(p => p.Id == line.ProductId))"
                                                  ValueChanged="@(p => VM.OnProductSelected(line, p))"
-                                                 ToStringFunc="@(p => p == null ? "" : $"[{p.Sku}] {p.Name}")"
-                                                 Placeholder="Search..."
+                                                 ToStringFunc="@(p => p == null ? "" : p.Name)"
+                                                 Placeholder="Buscar producto..."
                                                  Margin="Margin.Dense"
                                                  Dense="true"
                                                  Variant="Variant.Text" />
@@ -171,9 +176,14 @@
                             {
                                 var product = VM.Products.FirstOrDefault(p => p.Id == line.ProductId);
                                 <MudText Typo="Typo.body2">
-                                    <b>@(product?.Name ?? $"Product (ID: {line.ProductId})")</b>
+                                    <b>@(product?.Name ?? $"Cargando producto ({line.ProductId})...")</b>
                                 </MudText>
                             }
+                        </MudTd>
+                        <MudTd DataLabel="SKU">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                @(VM.Products.FirstOrDefault(p => p.Id == line.ProductId)?.Sku ?? "—")
+                            </MudText>
                         </MudTd>
                         <MudTd DataLabel="SKU">
                             <MudText Typo="Typo.body2" Color="Color.Secondary">
@@ -209,7 +219,7 @@
                    Color="Color.Primary"
                    OnClick="@(() => VM.SaveWorkOrderCommand.ExecuteAsync(null))"
                    Disabled="VM.IsLoading">
-            @(VM.IsEditMode ? "Update Order" : "Save Order")
+            @(VM.IsEditMode ? "Update order" : "Save order")
         </MudButton>
     </DialogActions>
 </MudDialog>

@@ -427,7 +427,11 @@ namespace TorqERP.Services
             var errorMessage = await GetErrorMessageAsync(response);
             throw new Exception(errorMessage);
         }
-
+        public async Task<bool> UpdateWorkOrderAsync(int id, WorkOrder order)
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/workOrders/update/{order.Id}", order);
+            return response.IsSuccessStatusCode;
+        }
 
         //Private functions
         private async Task<string> GetErrorMessageAsync(HttpResponseMessage response)

@@ -179,3 +179,22 @@ export const convertToInvoice = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Error generating invoice", details: error });
   }
 };
+
+export const updateWorkOrder = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { description, status, vehicleId } = req.body;
+
+  try {
+    const updatedOrder = await prisma.workOrder.update({
+      where: { id: Number(id) },
+      data: {
+        description,
+        status,
+        vehicleId
+      }
+    });
+    res.status(200).json(updatedOrder);
+  } catch (error: any) {
+    res.status(500).json({ error: "Update failed", message: error.message });
+  }
+};

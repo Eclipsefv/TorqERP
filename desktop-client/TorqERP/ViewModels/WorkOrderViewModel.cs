@@ -5,8 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-using TorqERP.Components.Pages;
 using TorqERP.DataModels;
 using TorqERP.Services;
 using Color = MudBlazor.Color;
@@ -53,6 +53,14 @@ namespace TorqERP.ViewModels
         [ObservableProperty]
         private List<Product> _products = new();
 
+        public List<WorkOrderStatus> StatusOptions { get; } = new()
+        {
+            WorkOrderStatus.PENDING,
+            WorkOrderStatus.IN_PROGRESS,
+            WorkOrderStatus.COMPLETED,
+            WorkOrderStatus.CANCELLED
+        };
+
         [RelayCommand]
         public async Task InitializeAsync()
         {
@@ -68,7 +76,7 @@ namespace TorqERP.ViewModels
             }
             catch (Exception ex)
             {
-                _snackbar.Add("Error cargando productos: " + ex.Message, Severity.Error);
+                _snackbar.Add("Error loading products: " + ex.Message, Severity.Error);
             }
         }
 
@@ -130,15 +138,18 @@ namespace TorqERP.ViewModels
                 Status = selectedOrder.Status,
                 VehicleId = selectedOrder.VehicleId,
                 CreatedAt = selectedOrder.CreatedAt,
-                UpdatedAt = selectedOrder.UpdatedAt,
-                CompletedAt = selectedOrder.CompletedAt,
-                Lines = selectedOrder.Lines != null
-                        ? selectedOrder.Lines.ToList()
-                        : new List<WorkOrderLine>()
+                Lines = selectedOrder.Lines?.ToList() ?? new List<WorkOrderLine>()
             };
+
+            if (Vehicles != null && Vehicles.Any())
+            {
+                SelectedVehicle = Vehicles.FirstOrDefault(v => v.Id == CurrentWorkOrder.VehicleId);
+            }
+
             IsDialogVisible = true;
             OnPropertyChanged(nameof(CurrentWorkOrder));
         }
+
         partial void OnCurrentWorkOrderChanged(WorkOrder? value)
         {
             if (value != null && Vehicles.Any())
@@ -146,6 +157,7 @@ namespace TorqERP.ViewModels
                 SelectedVehicle = Vehicles.FirstOrDefault(v => v.Id == value.VehicleId);
             }
         }
+
         public async Task<IEnumerable<Vehicle>> SearchVehicles(string value, CancellationToken token)
         {
             if (string.IsNullOrEmpty(value))
@@ -155,6 +167,7 @@ namespace TorqERP.ViewModels
                 v.Plate.Contains(value, StringComparison.OrdinalIgnoreCase) ||
                 v.Model.Contains(value, StringComparison.OrdinalIgnoreCase));
         }
+
         partial void OnSelectedVehicleChanged(Vehicle? value)
         {
             if (value != null && CurrentWorkOrder != null)
@@ -174,7 +187,7 @@ namespace TorqERP.ViewModels
         public static (Color color, string label) GetStatusDisplay(WorkOrderStatus status) => status switch
         {
             WorkOrderStatus.PENDING => (Color.Warning, "Pending"),
-            WorkOrderStatus.IN_PROGRESS => (Color.Info, "In rogress"),
+            WorkOrderStatus.IN_PROGRESS => (Color.Info, "In Progress"),
             WorkOrderStatus.COMPLETED => (Color.Success, "Completed"),
             WorkOrderStatus.CANCELLED => (Color.Error, "Cancelled"),
             _ => (Color.Default, status.ToString())
@@ -182,6 +195,11 @@ namespace TorqERP.ViewModels
 
         public async Task<IEnumerable<Product>> SearchProducts(string value, CancellationToken token)
         {
+            if (!Products.Any())
+            {
+                await LoadProductsAsync();
+            }
+
             if (string.IsNullOrEmpty(value))
                 return Products;
 
@@ -196,7 +214,7 @@ namespace TorqERP.ViewModels
             if (selectedProduct == null) return;
 
             line.ProductId = selectedProduct.Id;
-            line.Price = selectedProduct.SellPrice; 
+            line.Price = selectedProduct.SellPrice;
 
             OnPropertyChanged(nameof(CurrentWorkOrder));
         }
@@ -213,6 +231,7 @@ namespace TorqERP.ViewModels
             try
             {
                 IsLoading = true;
+                CurrentWorkOrder.VehicleId = SelectedVehicle.Id;
 
                 if (!IsEditMode)
                 {
@@ -225,27 +244,35 @@ namespace TorqERP.ViewModels
                             line.WorkOrderId = createdOrder.Id;
                             await _apiService.AddWorkOrderLineAsync(line);
                         }
-
-                        _snackbar.Add($"Order {createdOrder.OrderNumber} created succesfully.", Severity.Success);
+                        _snackbar.Add($"Order {createdOrder.OrderNumber} created successfully.", Severity.Success);
                     }
                 }
                 else
                 {
-                    var newLines = CurrentWorkOrder.Lines.Where(l => l.Id == 0).ToList();
+                    var updateResult = await _apiService.UpdateWorkOrderAsync(CurrentWorkOrder.Id, CurrentWorkOrder);
 
-                    if (newLines.Any())
+                    if (updateResult)
                     {
-                        foreach (var line in newLines)
-                        {
-                            line.WorkOrderId = CurrentWorkOrder.Id;
-                            await _apiService.AddWorkOrderLineAsync(line);
-                        }
+                        var newLines = CurrentWorkOrder.Lines.Where(l => l.Id == 0).ToList();
 
-                        _snackbar.Add($"{newLines.Count} New line ssaved succesfully", Severity.Success);
+                        if (newLines.Any())
+                        {
+                            foreach (var line in newLines)
+                            {
+                                line.WorkOrderId = CurrentWorkOrder.Id;
+                                await _apiService.AddWorkOrderLineAsync(line);
+                            }
+                            _snackbar.Add($"Order updated successfully. {newLines.Count} new lines saved.", Severity.Success);
+                        }
+                        else
+                        {
+                            _snackbar.Add("Order updated successfully.", Severity.Success);
+                        }
                     }
                     else
                     {
-                        _snackbar.Add("No new lines to add", Severity.Info);
+                        _snackbar.Add("Failed to update order header.", Severity.Error);
+                        return;
                     }
                 }
 
@@ -254,7 +281,7 @@ namespace TorqERP.ViewModels
             }
             catch (Exception ex)
             {
-                _snackbar.Add(ex.Message, Severity.Error);
+                _snackbar.Add($"Error: {ex.Message}", Severity.Error);
             }
             finally
             {
