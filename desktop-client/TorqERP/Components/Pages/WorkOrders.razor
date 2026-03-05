@@ -176,7 +176,7 @@
                             {
                                 var product = VM.Products.FirstOrDefault(p => p.Id == line.ProductId);
                                 <MudText Typo="Typo.body2">
-                                    <b>@(product?.Name ?? $"Cargando producto ({line.ProductId})...")</b>
+                                    <b>@(product?.Name ?? $"Loading product ({line.ProductId})...")</b>
                                 </MudText>
                             }
                         </MudTd>

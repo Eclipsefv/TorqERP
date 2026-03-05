@@ -7,11 +7,42 @@ datasource db {
   provider = "postgresql"
 }
 
+// --- ENUMS ---
+
 enum Role {
   ADMIN
   MANAGER
   USER
 }
+
+enum ProductType {
+  ITEM
+  SERVICE
+}
+
+enum WorkOrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELLED
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  CANCELLED
+  NO_SHOW
+  COMPLETED
+}
+
+// --- MODELS ---
 
 model User {
   id            Int      @id @default(autoincrement())
@@ -24,11 +55,6 @@ model User {
   last_login    DateTime @updatedAt
 }
 
-enum ProductType {
-  ITEM
-  SERVICE
-}
-
 model Product {
   id          Int         @id @default(autoincrement())
   sku         String      @unique
@@ -38,7 +64,6 @@ model Product {
   buyPrice    Decimal     @default(0.0)
   sellPrice   Decimal     @default(0.0)
   taxRate     Decimal     @default(21.0)
-  //only if physical item
   stock       Float?      @default(0)
   minStock    Float?      @default(0)
   location    String?
@@ -56,11 +81,16 @@ model Customer {
   address     String?
   phonenumber String?
   email       String?   @unique
-  vehicles    Vehicle[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  
+  // --- LOGIN OTP PARA LA APP ---
+  otpCode     String?   
+  otpExpires  DateTime? 
 
-  invoices Invoice[]
+  vehicles      Vehicle[]
+  appointments  Appointment[]
+  invoices      Invoice[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model Vehicle {
@@ -69,26 +99,35 @@ model Vehicle {
   brand      String?
   model      String?
   year       Int?
+  
   customerId Int
   customer   Customer @relation(fields: [customerId], references: [id])
+  
+  workOrders   WorkOrder[]
+  appointments Appointment[]
+  
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-
-  workOrders WorkOrder[]
 }
 
-enum WorkOrderStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
+model Appointment {
+  id               Int               @id @default(autoincrement())
+  scheduledAt      DateTime
+  estimatedTimeMin Int               @default(60)
+  description      String?
+  status           AppointmentStatus @default(SCHEDULED)
 
-enum InvoiceStatus {
-  DRAFT
-  ISSUED
-  PAID
-  CANCELLED
+  customerId       Int
+  customer         Customer          @relation(fields: [customerId], references: [id])
+
+  vehicleId        Int?
+  vehicle          Vehicle?          @relation(fields: [vehicleId], references: [id])
+
+  workOrderId      Int?              @unique
+  workOrder        WorkOrder?        @relation(fields: [workOrderId], references: [id])
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }
 
 model WorkOrder {
@@ -97,12 +136,12 @@ model WorkOrder {
   description String?
   status      WorkOrderStatus @default(PENDING)
 
-  vehicleId Int
-  vehicle   Vehicle @relation(fields: [vehicleId], references: [id])
+  vehicleId   Int
+  vehicle     Vehicle @relation(fields: [vehicleId], references: [id])
 
-  lines WorkOrderLine[]
-
-  invoice Invoice?
+  lines       WorkOrderLine[]
+  invoice     Invoice?
+  appointment Appointment?
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -110,16 +149,16 @@ model WorkOrder {
 }
 
 model WorkOrderLine {
-  id       Int     @id @default(autoincrement())
-  quantity Float   @default(1)
-  price    Decimal
-  discount Decimal @default(0.0)
+  id          Int       @id @default(autoincrement())
+  quantity    Float     @default(1)
+  price       Decimal
+  discount    Decimal   @default(0.0)
 
   workOrderId Int
   workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
 
-  productId Int
-  product   Product @relation(fields: [productId], references: [id])
+  productId   Int
+  product     Product   @relation(fields: [productId], references: [id])
 }
 
 model Invoice {
@@ -127,34 +166,34 @@ model Invoice {
   invoiceNumber String        @unique
   status        InvoiceStatus @default(DRAFT)
 
-  subtotal Decimal @default(0.0)
-  taxTotal Decimal @default(0.0)
-  total    Decimal @default(0.0)
+  subtotal      Decimal       @default(0.0)
+  taxTotal      Decimal       @default(0.0)
+  total         Decimal       @default(0.0)
 
-  customerId Int
-  customer   Customer @relation(fields: [customerId], references: [id])
+  customerId    Int
+  customer      Customer      @relation(fields: [customerId], references: [id])
 
-  workOrderId Int?       @unique
-  workOrder   WorkOrder? @relation(fields: [workOrderId], references: [id])
+  workOrderId   Int?          @unique
+  workOrder     WorkOrder?    @relation(fields: [workOrderId], references: [id])
 
-  lines InvoiceLine[]
+  lines         InvoiceLine[]
 
-  createdAt DateTime  @default(now())
-  issueDate DateTime  @default(now())
-  dueDate   DateTime?
+  createdAt     DateTime      @default(now())
+  issueDate     DateTime      @default(now())
+  dueDate       DateTime?
 }
 
 model InvoiceLine {
-  id          Int     @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   description String
   quantity    Float
   unitPrice   Decimal
-  taxRate     Decimal @default(21.0)
+  taxRate     Decimal  @default(21.0)
   total       Decimal
 
-  invoiceId Int
-  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceId   Int
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
-  productId Int?
-  product   Product? @relation(fields: [productId], references: [id])
+  productId   Int?
+  product     Product? @relation(fields: [productId], references: [id])
 }
