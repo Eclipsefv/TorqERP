@@ -82,7 +82,7 @@ model Customer {
   phonenumber String?
   email       String?   @unique
   
-  // --- LOGIN OTP PARA LA APP ---
+  // --- LOGIN OTP FOR THE APP ---
   otpCode     String?   
   otpExpires  DateTime? 
 
