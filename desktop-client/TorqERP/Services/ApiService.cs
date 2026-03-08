@@ -433,6 +433,26 @@ namespace TorqERP.Services
             return response.IsSuccessStatusCode;
         }
 
+        //Appointments
+        public async Task<List<Appointment>> GetAppointmentsAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("api/appointments/getAppointments");
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadFromJsonAsync<List<Appointment>>()
+                           ?? new List<Appointment>();
+                }
+                return new List<Appointment>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
+                return new List<Appointment>();
+            }
+        }
+
         //Private functions
         private async Task<string> GetErrorMessageAsync(HttpResponseMessage response)
         {
