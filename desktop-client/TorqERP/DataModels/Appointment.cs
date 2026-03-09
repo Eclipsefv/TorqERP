@@ -17,6 +17,7 @@ namespace TorqERP.DataModels
 
         public int VehicleId { get; set; }
 
+        public int CustomerId { get; set; }
         public Vehicle? Vehicle { get; set; }
 
         [Required]

@@ -1,0 +1,153 @@
+﻿@page "/appointments"
+@using TorqERP.ViewModels
+@using TorqERP.DataModels
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject AppointmentsViewModel VM
+
+<MudText Typo="Typo.h4" Class="mb-4" Color="Color.Primary">Appointments Calendar</MudText>
+
+<MudPaper Elevation="1" Class="pa-4 mb-4">
+    <MudToolBar DisableGutters="true" Class="gap-4">
+        <MudButton Variant="Variant.Outlined" OnClick="VM.PreviousMonthCommand.Execute">
+            <MudIcon Icon="@Icons.Material.Filled.ChevronLeft" /> Prev
+        </MudButton>
+
+        <MudText Typo="Typo.h5" Class="flex-grow-1 text-center fw-bold">
+            @VM.CurrentDate.ToString("MMMM yyyy").ToUpper()
+        </MudText>
+
+        <MudButton Variant="Variant.Outlined" OnClick="VM.NextMonthCommand.Execute">
+            Next <MudIcon Icon="@Icons.Material.Filled.ChevronRight" />
+        </MudButton>
+
+        <MudSpacer />
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="@(() => VM.OpenCreateDialog(null))">
+            New Appointment
+        </MudButton>
+    </MudToolBar>
+</MudPaper>
+
+@if (VM.IsLoading && !VM.Appointments.Any())
+{
+    <MudProgressLinear Color="Color.Info" Indeterminate="true" Class="my-7" />
+}
+else
+{
+    <MudPaper Elevation="1" Class="overflow-hidden">
+        <div style="display: grid; grid-template-columns: repeat(7, 1fr); background-color: var(--mud-palette-lines-default); gap: 1px;">
+            @foreach (var day in new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" })
+            {
+                <div class="mud-theme-light pa-2 text-center">
+                    <MudText Typo="Typo.subtitle2"><b>@day</b></MudText>
+                </div>
+            }
+
+            @for (int row = 0; row < 6; row++)
+            {
+                @for (int col = 0; col < 7; col++)
+                {
+                    var dayIndex = (row * 7) + col;
+                    var date = VM.StartDate.AddDays(dayIndex);
+                    var isCurrentMonth = date.Month == VM.CurrentDate.Month;
+                    var isToday = date.Date == DateTime.Today;
+                    var dayAppointments = VM.GetAppointmentsForDay(date);
+
+                    @if (!isCurrentMonth)
+                    {
+                        <div class="mud-palette-background-grey" style="min-height: 120px; border: 1px solid var(--mud-palette-lines-default); opacity: 0.3;">
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="pa-2 mud-palette-surface"
+                             style="min-height: 120px; background-color: white; border: 1px solid var(--mud-palette-lines-default);"
+                             @ondblclick="@(() => VM.OpenCreateDialog(date))">
+
+                            <div class="d-flex justify-space-between align-center mb-1">
+                                <MudText Typo="Typo.body2"
+                                         Color="@(isToday ? Color.Primary : Color.Default)"
+                                         Style="@(isToday ? "font-weight: bold;" : "")">
+                                    @date.Day
+                                </MudText>
+                                @if (dayAppointments.Any())
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text" Class="ma-0 px-1">
+                                        @dayAppointments.Count
+                                    </MudChip>
+                                }
+                            </div>
+
+                            <div style="max-height: 90px; overflow-y: auto;" class="d-flex flex-column gap-1">
+                                @foreach (var appt in dayAppointments)
+                                {
+                                    <MudPaper Elevation="0" Class="pa-1 mud-theme-primary cursor-pointer"
+                                              Style="border-radius: 4px; font-size: 0.75rem;"
+                                              OnClick="@(() => VM.OpenEditDialog(appt))">
+                                        <b>@appt.ScheduledAt.ToString("HH:mm")</b><br />
+                                        <span class="text-truncate d-block">@appt.Description</span>
+                                    </MudPaper>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            }
+        </div>
+    </MudPaper>
+}
+
+<MudDialog @bind-Visible="VM.IsDialogVisible" Options="VM.DialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@(VM.IsEditMode? Icons.Material.Filled.EditCalendar : Icons.Material.Filled.EditCalendar)" Class="mr-3" />
+            @(VM.IsEditMode ? "Edit appointment" : "New appointment")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudDatePicker Label="Date" @bind-Date="VM.SelectedDate" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTimePicker Label="Time" @bind-Time="VM.SelectedTime" Variant="Variant.Outlined" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudNumericField T="int" Label="Vehicle ID (Temporal)" @bind-Value="VM.CurrentAppointment.VehicleId" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudNumericField T="int" Label="Customer ID (Temporal)" @bind-Value="VM.CurrentAppointment.CustomerId" Variant="Variant.Outlined" />
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudSelect T="string" Label="Status" @bind-Value="VM.CurrentAppointment.Status" Variant="Variant.Outlined">
+                    @foreach (var status in VM.StatusOptions)
+                    {
+                        <MudSelectItem Value="@status">@status</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudTextField T="string" Label="Description" @bind-Value="VM.CurrentAppointment.Description" Variant="Variant.Outlined" Lines="3" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="VM.CloseDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="VM.SaveAppointmentAsync" Disabled="VM.IsLoading">
+            @(VM.IsEditMode ? "Update" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await VM.InitializeCommand.ExecuteAsync(null);
+    }
+}

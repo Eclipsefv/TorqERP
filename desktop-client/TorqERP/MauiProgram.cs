@@ -61,6 +61,7 @@ namespace TorqERP
             builder.Services.AddTransient<UsersViewModel>();
             builder.Services.AddTransient<ProductsViewModel>();
             builder.Services.AddTransient<WorkOrdersViewModel>();
+            builder.Services.AddTransient<AppointmentsViewModel>();
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
