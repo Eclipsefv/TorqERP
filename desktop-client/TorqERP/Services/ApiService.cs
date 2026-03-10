@@ -438,10 +438,11 @@ namespace TorqERP.Services
         {
             try
             {
-                var response = await _httpClient.GetAsync("api/appointments/getAppointments");
+                var response = await _httpClient.GetAsync("api/appointments/getAllAppointments");
                 if (response.IsSuccessStatusCode)
                 {
-                    return await response.Content.ReadFromJsonAsync<List<Appointment>>()
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    return await response.Content.ReadFromJsonAsync<List<Appointment>>(options)
                            ?? new List<Appointment>();
                 }
                 return new List<Appointment>();

@@ -1,13 +1,9 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MudBlazor;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using TorqERP.DataModels;
 using TorqERP.Services;
+using Color = MudBlazor.Color;
 
 namespace TorqERP.ViewModels
 {
@@ -20,51 +16,55 @@ namespace TorqERP.ViewModels
         {
             _apiService = apiService;
             _snackbar = snackbar;
-            CalculateGrid();
         }
 
-        [ObservableProperty]
+        [ObservableProperty] 
         private List<Appointment> _appointments = new();
 
         [ObservableProperty]
         private bool _isLoading = true;
 
         [ObservableProperty]
-        private DateTime _currentDate = DateTime.Today;
+        private DateTime _currentMonth = DateTime.Today;
 
         [ObservableProperty]
-        private DateTime _startDate;
+        private DateTime? _selectedDate;
 
         [ObservableProperty]
-        private bool _isDialogVisible;
+        private List<Appointment> _selectedDayAppointments = new();
 
         [ObservableProperty]
-        private bool _isEditMode;
+        private bool _isDetailsPanelOpen;
 
-        [ObservableProperty]
-        private Appointment _currentAppointment = new();
+        private static readonly string[] WeekDayHeaders = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+        public IEnumerable<string> GetWeekDayHeaders() => WeekDayHeaders;
 
-        public DialogOptions DialogOptions { get; } = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+        public string CurrentMonthLabel =>
+            CurrentMonth.ToString("MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-US"));
 
-        [ObservableProperty]
-        private List<Vehicle> _vehicles = new();
+        public List<DateTime?> GetCalendarDays()
+        {
+            var days = new List<DateTime?>();
+            var firstDay = new DateTime(CurrentMonth.Year, CurrentMonth.Month, 1);
+            int daysInMonth = DateTime.DaysInMonth(CurrentMonth.Year, CurrentMonth.Month);
+            int startOffset = ((int)firstDay.DayOfWeek + 6) % 7;
 
-        [ObservableProperty]
-        private List<Customer> _customers = new();
+            for (int i = 0; i < startOffset; i++) days.Add(null);
+            for (int d = 1; d <= daysInMonth; d++) days.Add(new DateTime(CurrentMonth.Year, CurrentMonth.Month, d));
 
-        [ObservableProperty]
-        private DateTime? _selectedDate = DateTime.Today;
+            return days;
+        }
 
-        [ObservableProperty]
-        private TimeSpan? _selectedTime = DateTime.Now.TimeOfDay;
+        private static DateTime ToLocalDate(DateTime dt) =>
+            (dt.Kind == DateTimeKind.Utc ? dt.ToLocalTime() : dt).Date;
 
-        public List<string> StatusOptions { get; } = new() { "SCHEDULED", "CONFIRMED", "COMPLETED", "CANCELLED" };
+        public bool HasAppointments(DateTime date) => Appointments.Any(a => ToLocalDate(a.ScheduledAt) == date.Date);
+        public int AppointmentCount(DateTime date) => Appointments.Count(a => ToLocalDate(a.ScheduledAt) == date.Date);
+        public bool IsToday(DateTime date) => date.Date == DateTime.Today;
+        public bool IsSelectedDay(DateTime date) => SelectedDate.HasValue && SelectedDate.Value.Date == date.Date;
 
         [RelayCommand]
-        public async Task InitializeAsync()
-        {
-            await Task.WhenAll(LoadAppointmentsAsync(), LoadVehiclesAsync(), LoadCustomersAsync());
-        }
+        public async Task InitializeAsync() => await LoadAppointmentsAsync();
 
         [RelayCommand]
         public async Task LoadAppointmentsAsync()
@@ -72,8 +72,7 @@ namespace TorqERP.ViewModels
             try
             {
                 IsLoading = true;
-                var result = await _apiService.GetAppointmentsAsync();
-                Appointments = result ?? new List<Appointment>();
+                Appointments = await _apiService.GetAppointmentsAsync() ?? new();
             }
             catch (Exception ex)
             {
@@ -85,109 +84,76 @@ namespace TorqERP.ViewModels
             }
         }
 
-        private async Task LoadVehiclesAsync() {
-           
-        }
-        private async Task LoadCustomersAsync() { 
-        
-        }
-
-
-        [RelayCommand]
-        private void NextMonth()
+        public void PreviousMonth() => CurrentMonth = CurrentMonth.AddMonths(-1);
+        public void NextMonth() => CurrentMonth = CurrentMonth.AddMonths(1);
+        public void GoToToday()
         {
-            CurrentDate = CurrentDate.AddMonths(1);
-            CalculateGrid();
+            CurrentMonth = DateTime.Today;
+            SelectDate(DateTime.Today);
         }
 
-        [RelayCommand]
-        private void PreviousMonth()
+        public void SelectDate(DateTime date)
         {
-            CurrentDate = CurrentDate.AddMonths(-1);
-            CalculateGrid();
+            SelectedDate = date;
+            SelectedDayAppointments = Appointments
+                .Where(a => ToLocalDate(a.ScheduledAt) == date.Date)
+                .OrderBy(a => a.ScheduledAt)
+                .ToList();
+            IsDetailsPanelOpen = true;
         }
 
-        private void CalculateGrid()
+        public void CloseDetailsPanel()
         {
-            var firstDayOfMonth = new DateTime(CurrentDate.Year, CurrentDate.Month, 1);
-            int offset = (int)firstDayOfMonth.DayOfWeek - (int)DayOfWeek.Monday;
-            if (offset < 0) offset += 7;
-            StartDate = firstDayOfMonth.AddDays(-offset);
+            IsDetailsPanelOpen = false;
+            SelectedDate = null;
+            SelectedDayAppointments = new();
         }
 
-        public List<Appointment> GetAppointmentsForDay(DateTime date)
-            => Appointments.Where(a => a.ScheduledAt.Date == date.Date).ToList();
-
-        [RelayCommand]
-        public void OpenCreateDialog(DateTime? date = null)
+        public Color GetStatusColor(string status) => status switch
         {
-            IsEditMode = false;
-            CurrentAppointment = new Appointment();
-            SelectedDate = date ?? DateTime.Today;
-            SelectedTime = new TimeSpan(9, 0, 0);
-            IsDialogVisible = true;
-        }
+            "SCHEDULED" => Color.Primary,
+            "COMPLETED" => Color.Success,
+            "CANCELLED" => Color.Error,
+            _ => Color.Default
+        };
 
-        [RelayCommand]
-        public void OpenEditDialog(Appointment appointment)
+        public string GetStatusIcon(string status) => status switch
         {
-            IsEditMode = true;
-            CurrentAppointment = new Appointment
-            {
-                Id = appointment.Id,
-                VehicleId = appointment.VehicleId,
-                CustomerId = appointment.CustomerId,
-                Description = appointment.Description,
-                Status = appointment.Status,
-                ScheduledAt = appointment.ScheduledAt
-            };
-            SelectedDate = appointment.ScheduledAt.Date;
-            SelectedTime = appointment.ScheduledAt.TimeOfDay;
-            IsDialogVisible = true;
-        }
+            "SCHEDULED" => Icons.Material.Filled.Schedule,
+            "COMPLETED" => Icons.Material.Filled.CheckCircle,
+            "CANCELLED" => Icons.Material.Filled.Cancel,
+            _ => Icons.Material.Filled.HelpOutline
+        };
 
-        [RelayCommand]
-        public void CloseDialog() => IsDialogVisible = false;
-
-        [RelayCommand]
-        public async Task SaveAppointmentAsync()
+        public string GetStatusLabel(string status) => status switch
         {
-            if (CurrentAppointment.VehicleId == 0 || CurrentAppointment.CustomerId == 0)
-            {
-                _snackbar.Add("Please select vehicle and customer", Severity.Warning);
-                return;
-            }
-
-            try
-            {
-                IsLoading = true;
-                if (SelectedDate.HasValue && SelectedTime.HasValue)
-                {
-                    CurrentAppointment.ScheduledAt = SelectedDate.Value.Date + SelectedTime.Value;
-                }
-
-                if (!IsEditMode)
-                {
-                    // insert logic
-                    _snackbar.Add("Appointment scheduled", Severity.Success);
-                }
-                else
-                {
-                    // update logic
-                    _snackbar.Add("Appointment updated", Severity.Success);
-                }
-
-                IsDialogVisible = false;
-                await LoadAppointmentsAsync();
-            }
-            catch (Exception ex)
-            {
-                _snackbar.Add($"Error: {ex.Message}", Severity.Error);
-            }
-            finally
-            {
-                IsLoading = false;
-            }
-        }
+            "SCHEDULED" => "Scheduled",
+            "COMPLETED" => "Completed",
+            "CANCELLED" => "Cancelled",
+            _ => status
+        };
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

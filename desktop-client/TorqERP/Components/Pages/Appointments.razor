@@ -5,149 +5,263 @@
 @attribute [Authorize]
 @inject AppointmentsViewModel VM
 
-<MudText Typo="Typo.h4" Class="mb-4" Color="Color.Primary">Appointments Calendar</MudText>
+<MudText Typo="Typo.h4" Class="mb-4" Color="Color.Primary">Appointments</MudText>
 
-<MudPaper Elevation="1" Class="pa-4 mb-4">
-    <MudToolBar DisableGutters="true" Class="gap-4">
-        <MudButton Variant="Variant.Outlined" OnClick="VM.PreviousMonthCommand.Execute">
-            <MudIcon Icon="@Icons.Material.Filled.ChevronLeft" /> Prev
-        </MudButton>
-
-        <MudText Typo="Typo.h5" Class="flex-grow-1 text-center fw-bold">
-            @VM.CurrentDate.ToString("MMMM yyyy").ToUpper()
-        </MudText>
-
-        <MudButton Variant="Variant.Outlined" OnClick="VM.NextMonthCommand.Execute">
-            Next <MudIcon Icon="@Icons.Material.Filled.ChevronRight" />
-        </MudButton>
-
-        <MudSpacer />
-
-        <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   OnClick="@(() => VM.OpenCreateDialog(null))">
-            New Appointment
-        </MudButton>
-    </MudToolBar>
+<MudPaper Class="pa-3 mb-4" Elevation="1">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Color="Color.Primary" OnClick="VM.PreviousMonth" />
+            <MudText Typo="Typo.h6" Style="min-width:180px; text-align:center;">@VM.CurrentMonthLabel</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Primary" OnClick="VM.NextMonth" />
+        </MudStack>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudChip T="string" Icon="@Icons.Material.Filled.Schedule" Color="Color.Primary" Variant="Variant.Text" Size="Size.Small">
+                @VM.Appointments.Count(a => a.Status == "SCHEDULED") Scheduled
+            </MudChip>
+            <MudChip T="string" Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Variant="Variant.Text" Size="Size.Small">
+                @VM.Appointments.Count(a => a.Status == "COMPLETED") Completed
+            </MudChip>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Today"
+                       OnClick="VM.GoToToday" Size="Size.Small">Today</MudButton>
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Default"
+                           OnClick="VM.LoadAppointmentsCommand.ExecuteAsync" />
+        </MudStack>
+    </MudStack>
 </MudPaper>
 
-@if (VM.IsLoading && !VM.Appointments.Any())
+@if (VM.IsLoading)
 {
-    <MudProgressLinear Color="Color.Info" Indeterminate="true" Class="my-7" />
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-3" />
 }
-else
-{
-    <MudPaper Elevation="1" Class="overflow-hidden">
-        <div style="display: grid; grid-template-columns: repeat(7, 1fr); background-color: var(--mud-palette-lines-default); gap: 1px;">
-            @foreach (var day in new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" })
-            {
-                <div class="mud-theme-light pa-2 text-center">
-                    <MudText Typo="Typo.subtitle2"><b>@day</b></MudText>
-                </div>
-            }
 
-            @for (int row = 0; row < 6; row++)
-            {
-                @for (int col = 0; col < 7; col++)
+<MudGrid Spacing="3">
+    <MudItem xs="12" md="@(VM.IsDetailsPanelOpen ? 8 : 12)">
+        <MudPaper Elevation="2" Class="pa-4">
+            <div class="appt-calendar-grid mb-2">
+                @foreach (var header in VM.GetWeekDayHeaders())
                 {
-                    var dayIndex = (row * 7) + col;
-                    var date = VM.StartDate.AddDays(dayIndex);
-                    var isCurrentMonth = date.Month == VM.CurrentDate.Month;
-                    var isToday = date.Date == DateTime.Today;
-                    var dayAppointments = VM.GetAppointmentsForDay(date);
-
-                    @if (!isCurrentMonth)
+                    <div class="appt-day-header">@header</div>
+                }
+            </div>
+            <div class="appt-calendar-grid">
+                @foreach (var day in VM.GetCalendarDays())
+                {
+                    @if (day is null)
                     {
-                        <div class="mud-palette-background-grey" style="min-height: 120px; border: 1px solid var(--mud-palette-lines-default); opacity: 0.3;">
-                        </div>
+                        <div class="appt-day-empty"></div>
                     }
                     else
                     {
-                        <div class="pa-2 mud-palette-surface"
-                             style="min-height: 120px; background-color: white; border: 1px solid var(--mud-palette-lines-default);"
-                             @ondblclick="@(() => VM.OpenCreateDialog(date))">
+                        var hasAppts = VM.HasAppointments(day.Value);
+                        var count = VM.AppointmentCount(day.Value);
+                        var isToday = VM.IsToday(day.Value);
+                        var isSelected = VM.IsSelectedDay(day.Value);
 
-                            <div class="d-flex justify-space-between align-center mb-1">
-                                <MudText Typo="Typo.body2"
-                                         Color="@(isToday ? Color.Primary : Color.Default)"
-                                         Style="@(isToday ? "font-weight: bold;" : "")">
-                                    @date.Day
-                                </MudText>
-                                @if (dayAppointments.Any())
-                                {
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text" Class="ma-0 px-1">
-                                        @dayAppointments.Count
-                                    </MudChip>
-                                }
-                            </div>
+                        <div class="@GetDayCellClass(isToday, isSelected, hasAppts)"
+                             @onclick="() => VM.SelectDate(day.Value)">
 
-                            <div style="max-height: 90px; overflow-y: auto;" class="d-flex flex-column gap-1">
-                                @foreach (var appt in dayAppointments)
-                                {
-                                    <MudPaper Elevation="0" Class="pa-1 mud-theme-primary cursor-pointer"
-                                              Style="border-radius: 4px; font-size: 0.75rem;"
-                                              OnClick="@(() => VM.OpenEditDialog(appt))">
-                                        <b>@appt.ScheduledAt.ToString("HH:mm")</b><br />
-                                        <span class="text-truncate d-block">@appt.Description</span>
-                                    </MudPaper>
-                                }
-                            </div>
+                            @if (isToday)
+                            {
+                                <MudAvatar Color="Color.Primary" Size="Size.Small" Class="appt-day-number-today">
+                                    @day.Value.Day
+                                </MudAvatar>
+                            }
+                            else
+                            {
+                                <span class="@(isSelected ? "appt-day-number appt-day-number--selected" : "appt-day-number")">
+                                    @day.Value.Day
+                                </span>
+                            }
+
+                            @if (hasAppts)
+                            {
+                                <div class="appt-dot-row">
+                                    @for (int i = 0; i < Math.Min(count, 3); i++)
+                                    {
+                                        <span class="appt-dot @(isSelected ? "appt-dot--selected" : "")"></span>
+                                    }
+                                    @if (count > 3)
+                                    {
+                                        <span class="appt-dot-more">+@(count - 3)</span>
+                                    }
+                                </div>
+                            }
                         </div>
                     }
                 }
-            }
-        </div>
-    </MudPaper>
-}
+            </div>
+        </MudPaper>
+    </MudItem>
 
-<MudDialog @bind-Visible="VM.IsDialogVisible" Options="VM.DialogOptions">
-    <TitleContent>
-        <MudText Typo="Typo.h6">
-            <MudIcon Icon="@(VM.IsEditMode? Icons.Material.Filled.EditCalendar : Icons.Material.Filled.EditCalendar)" Class="mr-3" />
-            @(VM.IsEditMode ? "Edit appointment" : "New appointment")
-        </MudText>
-    </TitleContent>
-    <DialogContent>
-        <MudGrid>
-            <MudItem xs="12" sm="6">
-                <MudDatePicker Label="Date" @bind-Date="VM.SelectedDate" Variant="Variant.Outlined" />
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudTimePicker Label="Time" @bind-Time="VM.SelectedTime" Variant="Variant.Outlined" />
-            </MudItem>
+    @if (VM.IsDetailsPanelOpen)
+    {
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+                    <div>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+                            @VM.SelectedDate?.ToString("dddd", System.Globalization.CultureInfo.GetCultureInfo("en-US"))
+                        </MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @VM.SelectedDate?.ToString("dd MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-US"))
+                        </MudText>
+                    </div>
+                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="VM.CloseDetailsPanel" />
+                </MudStack>
 
-            <MudItem xs="12" sm="6">
-                <MudNumericField T="int" Label="Vehicle ID (Temporal)" @bind-Value="VM.CurrentAppointment.VehicleId" Variant="Variant.Outlined" />
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudNumericField T="int" Label="Customer ID (Temporal)" @bind-Value="VM.CurrentAppointment.CustomerId" Variant="Variant.Outlined" />
-            </MudItem>
+                <MudDivider Class="mb-3" />
 
-            <MudItem xs="12">
-                <MudSelect T="string" Label="Status" @bind-Value="VM.CurrentAppointment.Status" Variant="Variant.Outlined">
-                    @foreach (var status in VM.StatusOptions)
+                @if (!VM.SelectedDayAppointments.Any())
+                {
+                    <MudStack AlignItems="AlignItems.Center" Class="mt-6" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Large" Color="Color.Secondary" />
+                        <MudText Typo="Typo.body1" Color="Color.Secondary">No appointments this day</MudText>
+                    </MudStack>
+                }
+                else
+                {
+                    @foreach (var appt in VM.SelectedDayAppointments)
                     {
-                        <MudSelectItem Value="@status">@status</MudSelectItem>
+                        <MudCard Elevation="1" Class="mb-3">
+                            <MudCardHeader>
+                                <CardHeaderAvatar>
+                                    <MudIcon Icon="@VM.GetStatusIcon(appt.Status)"
+                                             Color="@VM.GetStatusColor(appt.Status)" Size="Size.Medium" />
+                                </CardHeaderAvatar>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.subtitle2">@appt.DisplayClient</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @appt.DisplayTime · @appt.DisplayVehicle
+                                    </MudText>
+                                </CardHeaderContent>
+                                <CardHeaderActions>
+                                    <MudChip T="string" Color="@VM.GetStatusColor(appt.Status)"
+                                             Size="Size.Small" Variant="Variant.Filled">
+                                        @VM.GetStatusLabel(appt.Status)
+                                    </MudChip>
+                                </CardHeaderActions>
+                            </MudCardHeader>
+                            @if (!string.IsNullOrWhiteSpace(appt.Description))
+                            {
+                                <MudCardContent Class="pt-0">
+                                    <MudDivider Class="mb-2" />
+                                    <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="1">
+                                        <MudIcon Icon="@Icons.Material.Filled.Notes" Size="Size.Small"
+                                                 Color="Color.Secondary" Style="margin-top:2px;" />
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">@appt.Description</MudText>
+                                    </MudStack>
+                                </MudCardContent>
+                            }
+                        </MudCard>
                     }
-                </MudSelect>
-            </MudItem>
-
-            <MudItem xs="12">
-                <MudTextField T="string" Label="Description" @bind-Value="VM.CurrentAppointment.Description" Variant="Variant.Outlined" Lines="3" />
-            </MudItem>
-        </MudGrid>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="VM.CloseDialog">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="VM.SaveAppointmentAsync" Disabled="VM.IsLoading">
-            @(VM.IsEditMode ? "Update" : "Save")
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+                }
+            </MudPaper>
+        </MudItem>
+    }
+</MudGrid>
 
 @code {
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync() => await VM.InitializeCommand.ExecuteAsync(null);
+
+    private string GetDayCellClass(bool isToday, bool isSelected, bool hasAppts)
     {
-        await VM.InitializeCommand.ExecuteAsync(null);
+        var cls = "appt-day-cell";
+        if (isSelected) cls += " appt-day-cell--selected";
+        else if (isToday) cls += " appt-day-cell--today";
+        if (hasAppts) cls += " appt-day-cell--has-appts";
+        return cls;
     }
 }
+@*I have to majke an appointments.razor.css file later*@
+<style>
+    .appt-calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+    }
+
+    .appt-day-header {
+        text-align: center;
+        font-size: .7rem;
+        font-weight: 700;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: var(--mud-palette-text-secondary);
+        padding: 4px 0;
+    }
+
+    .appt-day-cell {
+        min-height: 68px;
+        border-radius: 8px;
+        padding: 6px 8px;
+        cursor: pointer;
+        border: 1px solid transparent;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        transition: background .12s ease, border-color .12s ease, box-shadow .12s ease;
+        background: var(--mud-palette-surface);
+    }
+
+        .appt-day-cell:hover {
+            background: var(--mud-palette-action-default-hover);
+            border-color: var(--mud-palette-primary);
+        }
+
+    .appt-day-cell--today {
+        border-color: var(--mud-palette-primary);
+    }
+
+    .appt-day-cell--selected {
+        background: var(--mud-palette-primary-lighten);
+        border-color: var(--mud-palette-primary);
+        box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+
+    .appt-day-empty {
+        min-height: 68px;
+    }
+
+    .appt-day-number {
+        font-size: .85rem;
+        align-self: flex-end;
+        color: var(--mud-palette-text-primary);
+    }
+
+    .appt-day-number--selected {
+        font-weight: 700;
+        color: var(--mud-palette-primary);
+    }
+
+    .appt-day-number-today {
+        width: 26px !important;
+        height: 26px !important;
+        font-size: .8rem !important;
+        align-self: flex-end;
+    }
+
+    .appt-dot-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+        align-items: center;
+    }
+
+    .appt-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--mud-palette-primary);
+        display: inline-block;
+    }
+
+    .appt-dot--selected {
+        background: var(--mud-palette-primary-darken);
+    }
+
+    .appt-dot-more {
+        font-size: .65rem;
+        font-weight: 700;
+        color: var(--mud-palette-primary);
+    }
+</style>

@@ -1,11 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace TorqERP.DataModels
 {
@@ -18,7 +14,10 @@ namespace TorqERP.DataModels
         public int VehicleId { get; set; }
 
         public int CustomerId { get; set; }
+
         public Vehicle? Vehicle { get; set; }
+
+        public Customer? Customer { get; set; }
 
         [Required]
         public DateTime ScheduledAt { get; set; }
@@ -27,10 +26,37 @@ namespace TorqERP.DataModels
 
         public string Status { get; set; } = "SCHEDULED";
 
+        [NotMapped]
         [JsonIgnore]
-        public string DisplayClient => Vehicle?.Customer?.Name ?? "N/A";
+        public string DisplayClient =>
+            Customer?.Name ?? Vehicle?.Customer?.Name ?? "N/A";
 
+        [NotMapped]
         [JsonIgnore]
-        public string DisplayVehicle => Vehicle != null ? $"{Vehicle.Plate} ({Vehicle.Model})" : "N/A";
+        public string DisplayVehicle =>
+            Vehicle != null ? $"{Vehicle.Plate} ({Vehicle.Brand} {Vehicle.Model})" : "N/A";
+
+        [NotMapped]
+        [JsonIgnore]
+        public string DisplayTime => ScheduledAt.ToString("HH:mm");
+
+        [NotMapped]
+        [JsonIgnore]
+        public string DisplayDate => ScheduledAt.ToString("dd/MM/yyyy");
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
