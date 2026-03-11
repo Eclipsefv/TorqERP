@@ -25,6 +25,10 @@
                        OnClick="VM.GoToToday" Size="Size.Small">Today</MudButton>
             <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Default"
                            OnClick="VM.LoadAppointmentsCommand.ExecuteAsync" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="VM.OpenCreateDialog">
+                New Appointment
+            </MudButton>
         </MudStack>
     </MudStack>
 </MudPaper>
@@ -52,9 +56,9 @@
                     }
                     else
                     {
-                        var hasAppts = VM.HasAppointments(day.Value);
-                        var count = VM.AppointmentCount(day.Value);
-                        var isToday = VM.IsToday(day.Value);
+                        var hasAppts  = VM.HasAppointments(day.Value);
+                        var count     = VM.AppointmentCount(day.Value);
+                        var isToday   = VM.IsToday(day.Value);
                         var isSelected = VM.IsSelectedDay(day.Value);
 
                         <div class="@GetDayCellClass(isToday, isSelected, hasAppts)"
@@ -160,6 +164,55 @@
     }
 </MudGrid>
 
+<MudDialog @bind-Visible="VM.IsDialogVisible" Options="VM.DialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.AddCircleOutline" Class="mr-3" />
+            New Appointment
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudAutocomplete T="Vehicle"
+                                 Label="Vehicle"
+                                 @bind-Value="VM.SelectedVehicle"
+                                 SearchFunc="@VM.SearchVehicles"
+                                 ToStringFunc="@(v => v == null ? null : $"{v.Plate} - {v.Brand} {v.Model}")"
+                                 Variant="Variant.Outlined"
+                                 AdornmentIcon="@Icons.Material.Filled.DirectionsCar"
+                                 AdornmentColor="Color.Primary">
+                    <ItemTemplate Context="vehicle">
+                        <MudText>
+                            <MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Size="Size.Small" Class="mr-2" />
+                            @vehicle.Plate <small class="ml-2" style="color:gray">@vehicle.Brand @vehicle.Model</small>
+                        </MudText>
+                    </ItemTemplate>
+                </MudAutocomplete>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudDatePicker Label="Date" Variant="Variant.Outlined"
+                               Date="VM.CurrentAppointment.ScheduledAt"
+                               DateChanged="@(d => VM.CurrentAppointment.ScheduledAt = d!.Value.Date + VM.CurrentAppointment.ScheduledAt.TimeOfDay)" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTimePicker Label="Time" Variant="Variant.Outlined" AmPm="false"
+                               Time="VM.CurrentAppointment.ScheduledAt.TimeOfDay"
+                               TimeChanged="@(t => VM.CurrentAppointment.ScheduledAt = VM.CurrentAppointment.ScheduledAt.Date + (t ?? TimeSpan.Zero))" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField T="string" Label="Description" Variant="Variant.Outlined" Lines="3"
+                              @bind-Value="VM.CurrentAppointment.Description" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="VM.CloseDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   OnClick="@(() => VM.SaveAppointmentCommand.ExecuteAsync(null))">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
 @code {
     protected override async Task OnInitializedAsync() => await VM.InitializeCommand.ExecuteAsync(null);
 
@@ -172,7 +225,8 @@
         return cls;
     }
 }
-@*I have to majke an appointments.razor.css file later*@
+
+
 <style>
     .appt-calendar-grid {
         display: grid;

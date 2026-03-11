@@ -45,18 +45,3 @@ namespace TorqERP.DataModels
         public string DisplayDate => ScheduledAt.ToString("dd/MM/yyyy");
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

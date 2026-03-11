@@ -454,6 +454,36 @@ namespace TorqERP.Services
             }
         }
 
+        public async Task<bool> CreateAppointmentAsync(Appointment appointment)
+        {
+            try
+            {
+                var payload = new
+                {
+                    vehicleId = appointment.VehicleId,
+                    customerId = appointment.CustomerId,
+                    scheduledAt = appointment.ScheduledAt.ToUniversalTime().ToString("o"),
+                    description = appointment.Description
+                };
+
+                var response = await _httpClient.PostAsJsonAsync("api/appointments/createAppointment", payload);
+
+                if (response.IsSuccessStatusCode)
+                    return true;
+
+                var errorMessage = await GetErrorMessageAsync(response);
+                throw new Exception(errorMessage);
+            }
+            catch (HttpRequestException httpEx)
+            {
+                throw new Exception($"Network error: {httpEx.Message}");
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
         //Private functions
         private async Task<string> GetErrorMessageAsync(HttpResponseMessage response)
         {

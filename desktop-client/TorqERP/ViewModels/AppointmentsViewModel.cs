@@ -4,6 +4,7 @@ using MudBlazor;
 using TorqERP.DataModels;
 using TorqERP.Services;
 using Color = MudBlazor.Color;
+using System.Diagnostics;
 
 namespace TorqERP.ViewModels
 {
@@ -18,16 +19,16 @@ namespace TorqERP.ViewModels
             _snackbar = snackbar;
         }
 
-        [ObservableProperty] 
+        [ObservableProperty]
         private List<Appointment> _appointments = new();
 
         [ObservableProperty]
         private bool _isLoading = true;
 
-        [ObservableProperty]
+        [ObservableProperty] 
         private DateTime _currentMonth = DateTime.Today;
 
-        [ObservableProperty]
+        [ObservableProperty] 
         private DateTime? _selectedDate;
 
         [ObservableProperty]
@@ -35,6 +36,32 @@ namespace TorqERP.ViewModels
 
         [ObservableProperty]
         private bool _isDetailsPanelOpen;
+
+        [ObservableProperty]
+        private bool _isDialogVisible;
+
+        [ObservableProperty]
+        private Appointment _currentAppointment = new();
+
+        public DialogOptions DialogOptions { get; } = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+        public List<Vehicle> Vehicles { get; private set; } = new();
+
+        [ObservableProperty] private Vehicle? _selectedVehicle;
+
+        partial void OnSelectedVehicleChanged(Vehicle? value)
+        {
+            if (value == null) return;
+            CurrentAppointment.VehicleId = value.Id;
+            CurrentAppointment.CustomerId = value.CustomerId;
+        }
+
+        public async Task<IEnumerable<Vehicle>> SearchVehicles(string value, CancellationToken token)
+        {
+            if (string.IsNullOrEmpty(value)) return Vehicles;
+            return Vehicles.Where(v =>
+                v.Plate.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                (v.Model?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
 
         private static readonly string[] WeekDayHeaders = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
         public IEnumerable<string> GetWeekDayHeaders() => WeekDayHeaders;
@@ -64,7 +91,23 @@ namespace TorqERP.ViewModels
         public bool IsSelectedDay(DateTime date) => SelectedDate.HasValue && SelectedDate.Value.Date == date.Date;
 
         [RelayCommand]
-        public async Task InitializeAsync() => await LoadAppointmentsAsync();
+        public async Task InitializeAsync()
+        {
+            await LoadAppointmentsAsync();
+            await LoadFormDataAsync();
+        }
+
+        private async Task LoadFormDataAsync()
+        {
+            try
+            {
+                Vehicles = await _apiService.GetVehiclesAsync() ?? new();
+            }
+            catch (Exception ex)
+            {
+                _snackbar.Add($"Error loading form data: {ex.Message}", Severity.Error);
+            }
+        }
 
         [RelayCommand]
         public async Task LoadAppointmentsAsync()
@@ -81,6 +124,41 @@ namespace TorqERP.ViewModels
             finally
             {
                 IsLoading = false;
+            }
+        }
+
+        [RelayCommand]
+        public void OpenCreateDialog()
+        {
+            CurrentAppointment = new Appointment { ScheduledAt = DateTime.Now, Status = "SCHEDULED" };
+            SelectedVehicle = null;
+            IsDialogVisible = true;
+        }
+
+        [RelayCommand]
+        public void CloseDialog() => IsDialogVisible = false;
+
+        [RelayCommand]
+        public async Task SaveAppointmentAsync()
+        {
+            if (SelectedVehicle == null)
+            {
+                _snackbar.Add("Select a vehicle.", Severity.Warning);
+                return;
+            }
+
+            try
+            {
+                if (await _apiService.CreateAppointmentAsync(CurrentAppointment))
+                {
+                    _snackbar.Add("Appointment created successfully", Severity.Success);
+                    await LoadAppointmentsAsync();
+                    CloseDialog();
+                }
+            }
+            catch (Exception ex)
+            {
+                _snackbar.Add($"Error: {ex.Message}", Severity.Error);
             }
         }
 
@@ -134,26 +212,3 @@ namespace TorqERP.ViewModels
         };
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
