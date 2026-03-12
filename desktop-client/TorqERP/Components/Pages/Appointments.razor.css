@@ -1,0 +1,90 @@
+﻿.appt-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.appt-day-header {
+    text-align: center;
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+    padding: 4px 0;
+}
+
+.appt-day-cell {
+    min-height: 68px;
+    border-radius: 8px;
+    padding: 6px 8px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: background .12s ease, border-color .12s ease, box-shadow .12s ease;
+    background: var(--mud-palette-surface);
+}
+
+    .appt-day-cell:hover {
+        background: var(--mud-palette-action-default-hover);
+        border-color: var(--mud-palette-primary);
+    }
+
+.appt-day-cell--today {
+    border-color: var(--mud-palette-primary);
+}
+
+.appt-day-cell--selected {
+    background: var(--mud-palette-primary-lighten);
+    border-color: var(--mud-palette-primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+
+.appt-day-empty {
+    min-height: 68px;
+}
+
+.appt-day-number {
+    font-size: .85rem;
+    align-self: flex-end;
+    color: var(--mud-palette-text-primary);
+}
+
+.appt-day-number--selected {
+    font-weight: 700;
+    color: var(--mud-palette-primary);
+}
+
+.appt-day-number-today {
+    width: 26px !important;
+    height: 26px !important;
+    font-size: .8rem !important;
+    align-self: flex-end;
+}
+
+.appt-dot-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    align-items: center;
+}
+
+.appt-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--mud-palette-primary);
+    display: inline-block;
+}
+
+.appt-dot--selected {
+    background: var(--mud-palette-primary-darken);
+}
+
+.appt-dot-more {
+    font-size: .65rem;
+    font-weight: 700;
+    color: var(--mud-palette-primary);
+}
