@@ -11,6 +11,7 @@ import customerRouter from './routes/customerRouter';
 import vehicleRouter from './routes/vehicleRouter';
 import workOrderRouter from './routes/workOrderRouter';
 import appointmentRouter from './routes/appointmentRouter';
+import publicRoutes from './routes/publicRoutes.js'
 
 dotenv.config();
 
@@ -19,6 +20,8 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json()); 
+
+app.use('/api/public', publicRoutes);
 
 app.use('/api/auth', authRouter);
 
@@ -39,6 +42,7 @@ app.use('/api/workOrders', workOrderRouter)
 
 //Appointments
 app.use('/api/appointments', appointmentRouter);
+
 
 //health check
 app.get('/', (req, res) => {
