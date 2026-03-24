@@ -3,107 +3,72 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../config/db.js';
 import { sendOtpEmail } from '../services/emailService.js';
 
-// ====================================================
-// Clave secreta para los JWT de sesión de la app móvil.
-// Puedes reusar tu JWT_SECRET existente o usar una distinta.
-// ====================================================
 const APP_JWT_SECRET = process.env.APP_JWT_SECRET || process.env.JWT_SECRET || 'app-session-secret-change-me';
 
-// Genera un código OTP de 6 dígitos
 const generateOtp = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-/**
- * POST /api/public/request-otp
- * Body: { nif: string, plate: string }
- * 
- * Busca un customer con ese NIF que tenga un vehicle con esa matrícula.
- * Genera OTP, lo guarda en BD y lo envía por email.
- */
 export const requestOtp = async (req: Request, res: Response) => {
   try {
-    let { nif, plate } = req.body;
+    let { nif } = req.body;
 
-    if (!nif || !plate) {
-      return res.status(400).json({ message: 'Se requieren NIF y matrícula' });
+    if (!nif) {
+      return res.status(400).json({ message: 'ID is required' });
     }
 
     nif = nif.toUpperCase().trim();
-    plate = plate.toUpperCase().trim().replace(/[\s-]/g, '');
 
-    // Buscar customer por NIF
     const customer = await prisma.customer.findUnique({
       where: { nif },
-      include: { vehicles: true },
     });
 
     if (!customer) {
-      return res.status(404).json({ message: 'No se encontró ningún cliente con ese DNI/NIF' });
+      return res.status(404).json({ message: 'No client found with that ID' });
     }
 
-    // Verificar que el customer tiene un vehículo con esa matrícula
-    const vehicle = customer.vehicles.find(
-      (v) => v.plate.toUpperCase().replace(/[\s-]/g, '') === plate
-    );
-
-    if (!vehicle) {
-      return res.status(404).json({ message: 'No se encontró un vehículo con esa matrícula asociado a tu DNI' });
-    }
-
-    // Verificar que el customer tiene email para recibir el OTP
     if (!customer.email) {
       return res.status(400).json({ 
-        message: 'No tienes un email registrado. Contacta con el taller para configurarlo.' 
+        message: 'You don\'t have a registered email. Contact the workshop to set it up.' 
       });
     }
 
-    // Generar OTP y guardar en BD
     const otpCode = generateOtp();
-    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
 
     await prisma.customer.update({
       where: { id: customer.id },
       data: { otpCode, otpExpires },
     });
 
-    // Enviar OTP por email
     await sendOtpEmail(customer.email, otpCode);
 
-    // Enmascarar email para la respuesta
     const emailParts = customer.email.split('@');
     const maskedEmail = emailParts[0].substring(0, 2) + '***@' + emailParts[1];
 
     return res.status(200).json({
-      message: `Código de verificación enviado a ${maskedEmail}`,
+      message: `Verification code sent to ${maskedEmail}`,
       maskedEmail,
     });
 
   } catch (error: any) {
-    console.error('Error en requestOtp:', error);
+    console.error('Error in requestOtp:', error);
     return res.status(500).json({ 
-      message: 'Error al enviar el código de verificación', 
+      message: 'Error sending the verification code', 
       error: error.message 
     });
   }
 };
 
-/**
- * POST /api/public/verify-otp
- * Body: { nif: string, plate: string, otpCode: string }
- * 
- * Verifica el código OTP y devuelve un JWT de sesión + datos del customer/vehicle.
- */
 export const verifyOtp = async (req: Request, res: Response) => {
   try {
-    let { nif, plate, otpCode } = req.body;
+    let { nif, otpCode } = req.body;
 
-    if (!nif || !otpCode || !plate) {
-      return res.status(400).json({ message: 'Se requieren NIF, matrícula y código OTP' });
+    if (!nif || !otpCode) {
+      return res.status(400).json({ message: 'ID and OTP Code are required' });
     }
 
     nif = nif.toUpperCase().trim();
-    plate = plate.toUpperCase().trim().replace(/[\s-]/g, '');
 
     const customer = await prisma.customer.findUnique({
       where: { nif },
@@ -111,37 +76,24 @@ export const verifyOtp = async (req: Request, res: Response) => {
     });
 
     if (!customer) {
-      return res.status(404).json({ message: 'Cliente no encontrado' });
+      return res.status(404).json({ message: 'Client not found' });
     }
 
-    // Verificar OTP
     if (!customer.otpCode || customer.otpCode !== otpCode) {
-      return res.status(401).json({ message: 'Código de verificación incorrecto' });
+      return res.status(401).json({ message: 'Incorrect verification code' });
     }
 
-    // Verificar que no ha expirado
     if (!customer.otpExpires || new Date() > customer.otpExpires) {
-      return res.status(401).json({ message: 'El código ha expirado. Solicita uno nuevo.' });
+      return res.status(401).json({ message: 'The code has expired. Request a new one.' });
     }
 
-    // Buscar vehículo
-    const vehicle = customer.vehicles.find(
-      (v) => v.plate.toUpperCase().replace(/[\s-]/g, '') === plate
-    );
-
-    if (!vehicle) {
-      return res.status(404).json({ message: 'Vehículo no encontrado para este cliente' });
-    }
-
-    // Limpiar OTP de la BD
     await prisma.customer.update({
       where: { id: customer.id },
       data: { otpCode: null, otpExpires: null },
     });
 
-    // Generar JWT de sesión (1 hora)
     const sessionToken = jwt.sign(
-      { customerId: customer.id, vehicleId: vehicle.id, type: 'app-session' },
+      { customerId: customer.id, type: 'app-session' },
       APP_JWT_SECRET,
       { expiresIn: '1h' }
     );
@@ -154,32 +106,29 @@ export const verifyOtp = async (req: Request, res: Response) => {
         nif: customer.nif,
         email: customer.email,
       },
-      vehicle: {
-        id: vehicle.id,
-        plate: vehicle.plate,
-        brand: vehicle.brand,
-        model: vehicle.model,
-        year: vehicle.year,
-      },
+      vehicles: customer.vehicles.map((v) => ({
+        id: v.id,
+        plate: v.plate,
+        brand: v.brand,
+        model: v.model,
+        year: v.year,
+      })),
     });
 
   } catch (error: any) {
-    console.error('Error en verifyOtp:', error);
+    console.error('Error in verifyOtp:', error);
     return res.status(500).json({ 
-      message: 'Error al verificar el código', 
+      message: 'Error verifying the code', 
       error: error.message 
     });
   }
 };
 
-/**
- * Middleware para verificar el JWT de sesión de la app móvil
- */
 export const verifySessionToken = (req: Request, res: Response, next: Function) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'Token de sesión requerido' });
+    return res.status(401).json({ message: 'Session token required' });
   }
 
   const token = authHeader.split(' ')[1];
@@ -188,34 +137,26 @@ export const verifySessionToken = (req: Request, res: Response, next: Function) 
     const decoded = jwt.verify(token, APP_JWT_SECRET) as any;
     
     if (decoded.type !== 'app-session') {
-      return res.status(401).json({ message: 'Token de sesión inválido' });
+      return res.status(401).json({ message: 'Invalid session token' });
     }
 
     (req as any).sessionData = {
       customerId: decoded.customerId,
-      vehicleId: decoded.vehicleId,
     };
 
     next();
   } catch (error) {
-    return res.status(401).json({ message: 'Sesión expirada. Vuelve a identificarte.' });
+    return res.status(401).json({ message: 'Session expired. Please log in again.' });
   }
 };
 
-/**
- * GET /api/public/appointments
- * Headers: Authorization: Bearer <sessionToken>
- * 
- * Devuelve las citas del customer autenticado por OTP.
- */
 export const getMyAppointments = async (req: Request, res: Response) => {
   try {
-    const { customerId, vehicleId } = (req as any).sessionData;
+    const { customerId } = (req as any).sessionData;
 
     const appointments = await prisma.appointment.findMany({
       where: {
         customerId: customerId,
-        vehicleId: vehicleId,
       },
       include: {
         vehicle: true,
@@ -228,35 +169,65 @@ export const getMyAppointments = async (req: Request, res: Response) => {
     return res.status(200).json(appointments);
 
   } catch (error: any) {
-    console.error('Error en getMyAppointments:', error);
+    console.error('Error in getMyAppointments:', error);
     return res.status(500).json({ 
-      message: 'Error al obtener las citas', 
+      message: 'Error getting appointments', 
       error: error.message 
     });
   }
 };
 
-/**
- * POST /api/public/appointments
- * Headers: Authorization: Bearer <sessionToken>
- * Body: { scheduledAt: string, description?: string }
- * 
- * Crea una nueva cita para el customer/vehicle de la sesión.
- */
 export const createMyAppointment = async (req: Request, res: Response) => {
   try {
-    const { customerId, vehicleId } = (req as any).sessionData;
-    const { scheduledAt, description } = req.body;
+    const { customerId } = (req as any).sessionData;
+    const { vehicleId, scheduledAt, description } = req.body;
+
+    if (!vehicleId) {
+      return res.status(400).json({ message: 'Vehicle ID is required' });
+    }
 
     if (!scheduledAt) {
-      return res.status(400).json({ message: 'Se requiere la fecha de la cita (scheduledAt)' });
+      return res.status(400).json({ message: 'Appointment date (scheduledAt) is required' });
+    }
+
+    const vehicle = await prisma.vehicle.findFirst({
+      where: {
+        id: vehicleId,
+        customerId: customerId,
+      },
+    });
+
+    if (!vehicle) {
+      return res.status(404).json({ message: 'Vehicle not found or does not belong to this customer' });
     }
 
     const scheduledDate = new Date(scheduledAt);
     
-    // Validar que la fecha sea futura
     if (scheduledDate <= new Date()) {
-      return res.status(400).json({ message: 'La fecha de la cita debe ser en el futuro' });
+      return res.status(400).json({ message: 'Appointment date must be in the future' });
+    }
+
+    const scheduledHour = scheduledDate.getHours();
+    if (scheduledHour < 9 || scheduledHour >= 16) {
+      return res.status(400).json({ message: 'Appointments can only be booked between 9:00 and 16:00' });
+    }
+
+    const dayStart = new Date(scheduledDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(scheduledDate);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const dailyCount = await prisma.appointment.count({
+      where: {
+        scheduledAt: {
+          gte: dayStart,
+          lte: dayEnd,
+        },
+      },
+    });
+
+    if (dailyCount >= 5) {
+      return res.status(400).json({ message: 'The daily appointment limit (5) has been reached for this date' });
     }
 
     const newAppointment = await prisma.appointment.create({
@@ -275,9 +246,48 @@ export const createMyAppointment = async (req: Request, res: Response) => {
     return res.status(201).json(newAppointment);
 
   } catch (error: any) {
-    console.error('Error en createMyAppointment:', error);
+    console.error('Error in createMyAppointment:', error);
     return res.status(500).json({ 
-      message: 'Error al crear la cita', 
+      message: 'Error creating appointment', 
+      error: error.message 
+    });
+  }
+};
+
+export const deleteMyAppointment = async (req: Request, res: Response) => {
+  try {
+    const { customerId } = (req as any).sessionData;
+    const appointmentId = parseInt(req.params.id);
+
+    if (isNaN(appointmentId)) {
+      return res.status(400).json({ message: 'Invalid appointment ID' });
+    }
+
+    const appointment = await prisma.appointment.findFirst({
+      where: {
+        id: appointmentId,
+        customerId: customerId,
+      },
+    });
+
+    if (!appointment) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+
+    if (appointment.status === 'COMPLETED') {
+      return res.status(400).json({ message: 'Cannot delete a completed appointment' });
+    }
+
+    await prisma.appointment.delete({
+      where: { id: appointmentId },
+    });
+
+    return res.status(204).send();
+
+  } catch (error: any) {
+    console.error('Error in deleteMyAppointment:', error);
+    return res.status(500).json({ 
+      message: 'Error deleting appointment', 
       error: error.message 
     });
   }
