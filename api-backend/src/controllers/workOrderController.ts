@@ -32,19 +32,51 @@ export const addLineToWorkOrder = async (req: Request, res: Response) => {
   try {
     const { workOrderId, productId, quantity, price, discount } = req.body;
 
-    const line = await prisma.workOrderLine.create({
-      data: {
-        workOrderId,
-        productId,
-        quantity,
-        price,
-        discount: discount || 0
-      }
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, stock: true, name: true, type: true }
     });
 
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    const isService = product.type === 'SERVICE';
+
+    if (!isService && product.stock < quantity) {
+      return res.status(409).json({ 
+        error: "Insufficient stock", 
+        available: product.stock,
+        requested: quantity
+      });
+    }
+
+    const operations: any[] = [
+      prisma.workOrderLine.create({
+        data: {
+          workOrderId,
+          productId,
+          quantity,
+          price,
+          discount: discount || 0
+        }
+      })
+    ];
+
+    if (!isService) {
+      operations.push(
+        prisma.product.update({
+          where: { id: productId },
+          data: { stock: { decrement: quantity } }
+        })
+      );
+    }
+
+    const [line] = await prisma.$transaction(operations);
+
     res.status(201).json(line);
-  } catch (error) {
-    res.status(500).json({ error: "Couldn't add line to work order" });
+  } catch (error: any) {
+    res.status(500).json({ error: "Couldn't add line to work order", message: error.message });
   }
 };
 
