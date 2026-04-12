@@ -299,5 +299,35 @@ namespace TorqERP.ViewModels
             });
             OnPropertyChanged(nameof(CurrentWorkOrder));
         }
+
+        public bool CanInvoice =>
+            IsEditMode &&
+            CurrentWorkOrder.Status != WorkOrderStatus.COMPLETED &&
+            CurrentWorkOrder.Status != WorkOrderStatus.CANCELLED;
+
+        [RelayCommand]
+        public async Task ConvertToInvoiceAsync()
+        {
+            try
+            {
+                IsLoading = true;
+                var invoice = await _apiService.ConvertToInvoiceAsync(CurrentWorkOrder.Id);
+
+                if (invoice != null)
+                {
+                    _snackbar.Add($"Invoice {invoice.InvoiceNumber} generated successfully.", Severity.Success);
+                    IsDialogVisible = false;
+                    await LoadWorkOrdersAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _snackbar.Add($"Error generating invoice: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
     }
 }

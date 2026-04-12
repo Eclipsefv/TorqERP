@@ -433,6 +433,17 @@ namespace TorqERP.Services
             return response.IsSuccessStatusCode;
         }
 
+        public async Task<Invoice?> ConvertToInvoiceAsync(int workOrderId)
+        {
+            var response = await _httpClient.PutAsync($"api/workOrders/convertToInvoice/{workOrderId}", null);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<Invoice>();
+            }
+            var errorMessage = await GetErrorMessageAsync(response);
+            throw new Exception(errorMessage);
+        }
+
         //Appointments
         public async Task<List<Appointment>> GetAppointmentsAsync()
         {

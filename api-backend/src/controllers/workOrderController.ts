@@ -1,14 +1,14 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db.js';
 import getNextSequence from '../helpers/invoiceWorkOrderGenerator';
-
+ 
 //work orders
 export const createWorkOrder = async (req: Request, res: Response) => {
   try {
     const { vehicleId, description } = req.body;
-
+ 
     const orderNumber = await getNextSequence(prisma,'W');
-
+ 
     const newOrder = await prisma.workOrder.create({
       data: {
         orderNumber,
@@ -17,7 +17,7 @@ export const createWorkOrder = async (req: Request, res: Response) => {
         status: 'PENDING'
       }
     });
-
+ 
     res.status(201).json(newOrder);
   } catch (error: any) {
   res.status(500).json({ 
@@ -27,22 +27,22 @@ export const createWorkOrder = async (req: Request, res: Response) => {
   });
   }
 };
-
+ 
 export const addLineToWorkOrder = async (req: Request, res: Response) => {
   try {
     const { workOrderId, productId, quantity, price, discount } = req.body;
-
+ 
     const product = await prisma.product.findUnique({
       where: { id: productId },
       select: { id: true, stock: true, name: true, type: true }
     });
-
+ 
     if (!product) {
       return res.status(404).json({ error: "Product not found" });
     }
-
+ 
     const isService = product.type === 'SERVICE';
-
+ 
     if (!isService && product.stock < quantity) {
       return res.status(409).json({ 
         error: "Insufficient stock", 
@@ -50,7 +50,7 @@ export const addLineToWorkOrder = async (req: Request, res: Response) => {
         requested: quantity
       });
     }
-
+ 
     const operations: any[] = [
       prisma.workOrderLine.create({
         data: {
@@ -62,7 +62,7 @@ export const addLineToWorkOrder = async (req: Request, res: Response) => {
         }
       })
     ];
-
+ 
     if (!isService) {
       operations.push(
         prisma.product.update({
@@ -71,15 +71,15 @@ export const addLineToWorkOrder = async (req: Request, res: Response) => {
         })
       );
     }
-
+ 
     const [line] = await prisma.$transaction(operations);
-
+ 
     res.status(201).json(line);
   } catch (error: any) {
     res.status(500).json({ error: "Couldn't add line to work order", message: error.message });
   }
 };
-
+ 
 //general get
 export const getWorkOrders = async (req: Request, res: Response) => {
   try {
@@ -106,7 +106,7 @@ export const getWorkOrders = async (req: Request, res: Response) => {
         createdAt: 'desc'
       }
     });
-
+ 
     res.status(200).json(orders);
   } catch (error: any) {
     res.status(500).json({ 
@@ -115,11 +115,11 @@ export const getWorkOrders = async (req: Request, res: Response) => {
     });
   }
 };
-
+ 
 //for detailed work order
 export const getWorkOrderById = async (req: Request, res: Response) => {
   const { id } = req.params;
-
+ 
   try {
     const order = await prisma.workOrder.findUnique({
       where: { id: Number(id) },
@@ -139,51 +139,72 @@ export const getWorkOrderById = async (req: Request, res: Response) => {
         }
       }
     });
-
+ 
     if (!order) {
       return res.status(404).json({ message: "Nonexistant work order" });
     }
-
+ 
     res.status(200).json(order);
   } catch (error: any) {
     res.status(500).json({ error: "Error on search", message: error.message });
   }
 };
-
+ 
 //invoices
 export const convertToInvoice = async (req: Request, res: Response) => {
-  const { workOrderId } = req.params;
-
+  const { id: workOrderId } = req.params;
+ 
   try {
     const wo = await prisma.workOrder.findUnique({
       where: { id: Number(workOrderId) },
       include: {
         lines: { include: { product: true } },
-        vehicle: { include: { customer: true } }
+        vehicle: { include: { customer: true } },
+        invoice: { select: { id: true, invoiceNumber: true } }
       }
     });
-
-    if (!wo) return res.status(404).json({ message: "Work order not found" });
-
-    const invoiceNumber = await getNextSequence(prisma,'F');
-
+ 
+    if (!wo) {
+      return res.status(404).json({ message: "Work order not found" });
+    }
+ 
+    if (wo.status === 'CANCELLED') {
+      return res.status(400).json({ message: "Cannot invoice a cancelled work order" });
+    }
+ 
+    if (wo.invoice) {
+      return res.status(409).json({ 
+        message: "This work order already has an invoice", 
+        invoiceNumber: wo.invoice.invoiceNumber 
+      });
+    }
+ 
+    if (wo.lines.length === 0) {
+      return res.status(400).json({ message: "Cannot invoice a work order with no lines" });
+    }
+ 
+    const invoiceNumber = await getNextSequence(prisma, 'F');
+    
     let subtotal = 0;
+    let taxTotal = 0;
+ 
     const lines = wo.lines.map(line => {
-      const lineTotal = Number(line.price) * line.quantity;
-      subtotal += lineTotal;
+      const lineSubtotal = Number(line.price) * line.quantity;
+      const lineTax = lineSubtotal * (Number(line.product.taxRate) / 100);
+      subtotal += lineSubtotal;
+      taxTotal += lineTax;
       return {
         description: line.product.name,
         quantity: line.quantity,
         unitPrice: line.price,
         taxRate: line.product.taxRate,
-        total: lineTotal,
+        total: lineSubtotal + lineTax,
         productId: line.productId
       };
     });
-
-    const taxTotal = subtotal * 0.21;
+ 
     const total = subtotal + taxTotal;
-
+ 
     const invoice = await prisma.$transaction(async (tx) => {
       const inv = await tx.invoice.create({
         data: {
@@ -197,25 +218,28 @@ export const convertToInvoice = async (req: Request, res: Response) => {
           lines: { create: lines }
         }
       });
-
+ 
       await tx.workOrder.update({
         where: { id: wo.id },
-        data: { status: 'COMPLETED' }
+        data: { 
+          status: 'COMPLETED',
+          completedAt: new Date()
+        }
       });
-
+ 
       return inv;
     });
-
+ 
     res.status(201).json(invoice);
-  } catch (error) {
-    res.status(500).json({ error: "Error generating invoice", details: error });
+  } catch (error: any) {
+    res.status(500).json({ error: "Error generating invoice", message: error.message });
   }
 };
-
+ 
 export const updateWorkOrder = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { description, status, vehicleId } = req.body;
-
+ 
   try {
     const updatedOrder = await prisma.workOrder.update({
       where: { id: Number(id) },

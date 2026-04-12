@@ -215,6 +215,16 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="VM.CloseDialog">Cancel</MudButton>
+        @if (VM.CanInvoice)
+        {
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Success"
+                       StartIcon="@Icons.Material.Filled.Receipt"
+                       OnClick="@(() => VM.ConvertToInvoiceCommand.ExecuteAsync(null))"
+                       Disabled="VM.IsLoading">
+                Generate Invoice
+            </MudButton>
+        }
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    OnClick="@(() => VM.SaveWorkOrderCommand.ExecuteAsync(null))"
