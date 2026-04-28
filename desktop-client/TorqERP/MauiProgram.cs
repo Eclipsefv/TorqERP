@@ -1,9 +1,9 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
-using Microsoft.AspNetCore.Components.Authorization;
+using System.Globalization;
 using TorqERP.Services;
 using TorqERP.ViewModels;
-
 using Uri = System.Uri;
 
 namespace TorqERP
@@ -22,13 +22,13 @@ namespace TorqERP
 
             builder.Services.AddMauiBlazorWebView();
 
-            // 1.MudBlazor
+            //MudBlazor
             builder.Services.AddMudServices();
 
-            // 2.HttpClient
+            //HttpClient
             const string BaseUrl = "http://localhost:3000/";
 
-            // 3.Autentication
+            //Autentication
             builder.Services.AddAuthorizationCore();
 
             //concrete auth custom class
@@ -62,11 +62,16 @@ namespace TorqERP
             builder.Services.AddTransient<ProductsViewModel>();
             builder.Services.AddTransient<WorkOrdersViewModel>();
             builder.Services.AddTransient<AppointmentsViewModel>();
+            builder.Services.AddTransient<InvoicesViewModel>();
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
             builder.Logging.AddDebug();
 #endif
+            //set everything to euros
+            var culture = new CultureInfo("es-ES");
+            CultureInfo.DefaultThreadCurrentCulture = culture;
+            CultureInfo.DefaultThreadCurrentUICulture = culture;
 
             return builder.Build();
         }

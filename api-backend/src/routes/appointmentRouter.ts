@@ -3,7 +3,6 @@ import { getAppointments, createAppointment } from '../controllers/appointmentCo
 
 const router = Router();
 
-console.log("Controlador getAppointments:", getAppointments);
 router.get('/getAllAppointments', getAppointments);
 router.post('/createAppointment', createAppointment);
 

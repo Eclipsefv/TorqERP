@@ -444,6 +444,35 @@ namespace TorqERP.Services
             throw new Exception(errorMessage);
         }
 
+        public async Task<List<Invoice>> GetInvoicesAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("api/workOrders/getInvoices");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var options = new JsonSerializerOptions
+                    {
+                        Converters = { new JsonStringEnumConverter() },
+                        PropertyNameCaseInsensitive = true,
+                        NumberHandling = JsonNumberHandling.AllowReadingFromString
+                    };
+
+                    return await response.Content.ReadFromJsonAsync<List<Invoice>>(options)
+                           ?? new List<Invoice>();
+                }
+
+                return new List<Invoice>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error - GetInvoicesAsync: {ex.Message}");
+                return new List<Invoice>();
+            }
+        }
+
+
         //Appointments
         public async Task<List<Appointment>> GetAppointmentsAsync()
         {

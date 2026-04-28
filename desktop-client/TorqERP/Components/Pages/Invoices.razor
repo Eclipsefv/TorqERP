@@ -1,0 +1,191 @@
+@page "/invoices"
+@using TorqERP.ViewModels
+@using TorqERP.DataModels
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject InvoicesViewModel VM
+
+<MudText Typo="Typo.h4" Class="mb-4" Color="Color.Primary">Invoices</MudText>
+
+<MudTable Items="VM.Invoices"
+          Loading="VM.IsLoading"
+          LoadingProgressColor="Color.Info"
+          Hover="true"
+          Dense="true"
+          Breakpoint="Breakpoint.Sm"
+          Elevation="1"
+          OnRowClick="@((TableRowClickEventArgs<Invoice> args) => VM.OnRowClick(args))"
+          RowClass="cursor-pointer"
+          Filter="new Func<Invoice, bool>(VM.FilterInvoice)">
+
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Registered Invoices</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="VM.SearchString"
+                      Placeholder="Search by number, status or customer"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium"
+                      Class="mt-0"
+                      Immediate="true" />
+    </ToolBarContent>
+
+    <HeaderContent>
+        <MudTh>Invoice #</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Customer ID</MudTh>
+        <MudTh>Work Order ID</MudTh>
+        <MudTh>Subtotal</MudTh>
+        <MudTh>Tax</MudTh>
+        <MudTh>Total</MudTh>
+        <MudTh>Issue Date</MudTh>
+        <MudTh>Due Date</MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="Invoice #">
+            <MudChip T="string" Color="Color.Primary" Variant="Variant.Text" Size="Size.Small">@context.InvoiceNumber</MudChip>
+        </MudTd>
+        <MudTd DataLabel="Status">
+            @{
+                var (color, label) = InvoicesViewModel.GetStatusDisplay(context.Status);
+            }
+            <MudChip T="string" Color="@color" Variant="Variant.Filled" Size="Size.Small">@label</MudChip>
+        </MudTd>
+        <MudTd DataLabel="Customer ID">@context.CustomerId</MudTd>
+        <MudTd DataLabel="Work Order ID">@(context.WorkOrderId.HasValue ? context.WorkOrderId.Value.ToString() : "—")</MudTd>
+        <MudTd DataLabel="Subtotal">@context.Subtotal.ToString("C")</MudTd>
+        <MudTd DataLabel="Tax">@context.TaxTotal.ToString("C")</MudTd>
+        <MudTd DataLabel="Total">
+            <b>@context.Total.ToString("C")</b>
+        </MudTd>
+        <MudTd DataLabel="Issue Date">@context.IssueDate.ToLocalTime().ToString("dd/MM/yyyy")</MudTd>
+        <MudTd DataLabel="Due Date">@(context.DueDate.HasValue ? context.DueDate.Value.ToLocalTime().ToString("dd/MM/yyyy") : "—")</MudTd>
+    </RowTemplate>
+
+    <PagerContent>
+        <MudTablePager InfoFormat="{first_item}-{last_item} of {all_items}" RowsPerPageString="Rows per page:" />
+    </PagerContent>
+</MudTable>
+
+<MudDialog @bind-Visible="VM.IsDialogVisible" Options="VM.DialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Receipt" Class="mr-3" />
+            Invoice detail: @VM.CurrentInvoice.InvoiceNumber
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid>
+
+            {{!-- Header fields --}}
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Invoice Number"
+                              Value="@VM.CurrentInvoice.InvoiceNumber"
+                              Variant="Variant.Outlined" ReadOnly="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                @{
+                    var (statusColor, statusLabel) = InvoicesViewModel.GetStatusDisplay(VM.CurrentInvoice.Status);
+                }
+                <MudTextField T="string" Label="Status"
+                              Value="@statusLabel"
+                              Variant="Variant.Outlined" ReadOnly="true"
+                              AdornmentIcon="@Icons.Material.Filled.Circle"
+                              Adornment="Adornment.Start" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Customer ID"
+                              Value="@VM.CurrentInvoice.CustomerId.ToString()"
+                              Variant="Variant.Outlined" ReadOnly="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Work Order ID"
+                              Value="@(VM.CurrentInvoice.WorkOrderId.HasValue ? VM.CurrentInvoice.WorkOrderId.Value.ToString() : "—")"
+                              Variant="Variant.Outlined" ReadOnly="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="4">
+                <MudTextField T="string" Label="Issue Date"
+                              Value="@VM.CurrentInvoice.IssueDate.ToLocalTime().ToString("dd/MM/yyyy")"
+                              Variant="Variant.Outlined" ReadOnly="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="4">
+                <MudTextField T="string" Label="Due Date"
+                              Value="@(VM.CurrentInvoice.DueDate.HasValue ? VM.CurrentInvoice.DueDate.Value.ToLocalTime().ToString("dd/MM/yyyy") : "—")"
+                              Variant="Variant.Outlined" ReadOnly="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="4">
+                <MudTextField T="string" Label="Created At"
+                              Value="@VM.CurrentInvoice.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")"
+                              Variant="Variant.Outlined" ReadOnly="true" />
+            </MudItem>
+
+            {{!-- Lines --}}
+            <MudItem xs="12">
+                <MudText Typo="Typo.subtitle1" Class="mb-2"><b>Invoice Lines</b></MudText>
+
+                <MudTable Items="VM.CurrentInvoice.Lines"
+                          Dense="true"
+                          Elevation="0"
+                          Outlined="true"
+                          Hover="true"
+                          Context="line"
+                          EmptyContent="No lines found for this invoice.">
+                    <HeaderContent>
+                        <MudTh>Description</MudTh>
+                        <MudTh Style="width: 70px">Qty</MudTh>
+                        <MudTh>Unit Price</MudTh>
+                        <MudTh>Tax %</MudTh>
+                        <MudTh>Total</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Description">
+                            <MudText Typo="Typo.body2">@line.Description</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Qty">
+                            <MudText Typo="Typo.body2">@line.Quantity</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Unit Price">
+                            <MudText Typo="Typo.body2">@line.UnitPrice.ToString("C")</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Tax %">
+                            <MudText Typo="Typo.body2">@line.TaxRate.ToString("0.##")%</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Total">
+                            <MudText Typo="Typo.body2" Color="Color.Primary">
+                                <b>@line.Total.ToString("C")</b>
+                            </MudText>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudItem>
+
+            {{!-- Totals summary --}}
+            <MudItem xs="12">
+                <MudDivider Class="my-2" />
+                <div class="d-flex flex-column align-end gap-1">
+                    <MudText Typo="Typo.body2">Subtotal: <b>@VM.CurrentInvoice.Subtotal.ToString("C")</b></MudText>
+                    <MudText Typo="Typo.body2">Tax: <b>@VM.CurrentInvoice.TaxTotal.ToString("C")</b></MudText>
+                    <MudText Typo="Typo.h6" Color="Color.Primary">Total: <b>@VM.CurrentInvoice.Total.ToString("C")</b></MudText>
+                </div>
+            </MudItem>
+
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="VM.CloseDialog" Variant="Variant.Filled" Color="Color.Primary">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await VM.InitializeCommand.ExecuteAsync(null);
+    }
+}

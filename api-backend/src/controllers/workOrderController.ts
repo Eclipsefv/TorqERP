@@ -254,3 +254,27 @@ export const updateWorkOrder = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Update failed", message: error.message });
   }
 };
+
+router.get('/getInvoices', async (req, res) => {
+  try {
+    const invoices = await prisma.invoice.findMany({
+      include: {
+        lines: {
+          include: {
+            product: true
+          }
+        },
+        customer: true,
+        workOrder: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    return res.status(200).json(invoices);
+  } catch (error) {
+    console.error('Error fetching invoices:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+});
