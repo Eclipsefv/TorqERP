@@ -255,14 +255,12 @@ export const updateWorkOrder = async (req: Request, res: Response) => {
   }
 };
 
-router.get('/getInvoices', async (req, res) => {
+export const getInvoices = async (req: Request, res: Response) => {
   try {
     const invoices = await prisma.invoice.findMany({
       include: {
         lines: {
-          include: {
-            product: true
-          }
+          include: { product: true }
         },
         customer: true,
         workOrder: true
@@ -271,10 +269,9 @@ router.get('/getInvoices', async (req, res) => {
         createdAt: 'desc'
       }
     });
-
-    return res.status(200).json(invoices);
-  } catch (error) {
-    console.error('Error fetching invoices:', error);
-    return res.status(500).json({ message: 'Internal server error' });
+ 
+    res.status(200).json(invoices);
+  } catch (error: any) {
+    res.status(500).json({ error: "Error fetching invoices", message: error.message });
   }
-});
+};

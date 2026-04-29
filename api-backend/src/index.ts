@@ -12,6 +12,7 @@ import vehicleRouter from './routes/vehicleRouter';
 import workOrderRouter from './routes/workOrderRouter';
 import appointmentRouter from './routes/appointmentRouter';
 import publicRoutes from './routes/publicRoutes.js'
+import supplierRouter from './routes/supplierRouter';
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json()); 
 
+//public routes for the mobile app (OTP on gmail)
 app.use('/api/public', publicRoutes);
 
 app.use('/api/auth', authRouter);
@@ -43,6 +45,8 @@ app.use('/api/workOrders', workOrderRouter)
 //Appointments
 app.use('/api/appointments', appointmentRouter);
 
+//suppliers/deliveery notes
+app.use('/api/suppliers', supplierRouter);
 
 //health check
 app.get('/', (req, res) => {
