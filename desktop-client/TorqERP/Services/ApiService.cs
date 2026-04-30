@@ -524,6 +524,115 @@ namespace TorqERP.Services
             }
         }
 
+        public async Task<List<Supplier>> GetSuppliersAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("api/suppliers/getSuppliers");
+                if (response.IsSuccessStatusCode)
+                    return await response.Content.ReadFromJsonAsync<List<Supplier>>() ?? new();
+                return new();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
+                return new();
+            }
+        }
+
+        public async Task<bool> CreateSupplierAsync(Supplier supplier)
+        {
+            try
+            {
+                var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+                var response = await _httpClient.PostAsJsonAsync("api/suppliers/insert", supplier, options);
+                if (response.IsSuccessStatusCode) return true;
+                throw new Exception(await GetErrorMessageAsync(response));
+            }
+            catch (HttpRequestException httpEx) { throw new Exception($"Network error: {httpEx.Message}"); }
+            catch (Exception) { throw; }
+        }
+
+        public async Task<bool> UpdateSupplierAsync(Supplier supplier)
+        {
+            try
+            {
+                if (supplier.Id == 0) throw new Exception("Supplier ID is not valid");
+                var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+                var response = await _httpClient.PutAsJsonAsync($"api/suppliers/update/{supplier.Id}", supplier, options);
+                if (response.IsSuccessStatusCode) return true;
+                throw new Exception(await GetErrorMessageAsync(response));
+            }
+            catch (HttpRequestException httpEx) { throw new Exception($"Network error: {httpEx.Message}"); }
+            catch (Exception) { throw; }
+        }
+
+        public async Task<List<DeliveryNote>> GetDeliveryNotesAsync()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync("api/suppliers/getDeliveryNotes");
+                if (response.IsSuccessStatusCode)
+                    return await response.Content.ReadFromJsonAsync<List<DeliveryNote>>() ?? new();
+                return new();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
+                return new();
+            }
+        }
+
+        public async Task<DeliveryNote?> CreateDeliveryNoteAsync(DeliveryNote note)
+        {
+            var payload = new
+            {
+                supplierId = note.SupplierId,
+                supplierNoteNumber = note.SupplierNoteNumber,
+                date = note.Date.ToUniversalTime().ToString("o"),
+                notes = note.Notes
+            };
+
+            var response = await _httpClient.PostAsJsonAsync("api/suppliers/insertDeliveryNote", payload);
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<DeliveryNote>();
+
+            throw new Exception(await GetErrorMessageAsync(response));
+        }
+
+        public async Task<DeliveryNoteLine?> AddDeliveryNoteLineAsync(DeliveryNoteLine line)
+        {
+            var payload = new
+            {
+                deliveryNoteId = line.DeliveryNoteId,
+                productId = line.ProductId,
+                quantity = line.Quantity,
+                unitCost = line.UnitCost,
+                taxRate = line.TaxRate,
+                discount = line.Discount
+            };
+
+            var response = await _httpClient.PostAsJsonAsync("api/suppliers/addDeliveryNoteLine", payload);
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<DeliveryNoteLine>();
+
+            throw new Exception(await GetErrorMessageAsync(response));
+        }
+
+        public async Task<bool> UpdateDeliveryNoteAsync(DeliveryNote note)
+        {
+            var payload = new
+            {
+                supplierNoteNumber = note.SupplierNoteNumber,
+                date = note.Date.ToUniversalTime().ToString("o"),
+                notes = note.Notes
+            };
+
+            var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            var response = await _httpClient.PutAsJsonAsync($"api/suppliers/updateDeliveryNote/{note.Id}", payload, options);
+            return response.IsSuccessStatusCode;
+        }
+
         //Private functions
         private async Task<string> GetErrorMessageAsync(HttpResponseMessage response)
         {

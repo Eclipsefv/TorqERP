@@ -1,0 +1,401 @@
+@page "/suppliers"
+@using TorqERP.ViewModels
+@using TorqERP.DataModels
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject SuppliersViewModel VM
+
+<MudText Typo="Typo.h4" Class="mb-4" Color="Color.Primary">Suppliers</MudText>
+
+<MudTable Items="VM.Suppliers"
+          Loading="VM.IsLoading"
+          LoadingProgressColor="Color.Info"
+          Hover="true"
+          Dense="true"
+          Breakpoint="Breakpoint.Sm"
+          Elevation="1"
+          OnRowClick="@((TableRowClickEventArgs<Supplier> args) => VM.OnSupplierRowClick(args))"
+          RowClass="cursor-pointer"
+          Filter="new Func<Supplier, bool>(VM.FilterSupplier)">
+
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Supplier List</MudText>
+        <MudSpacer />
+        <MudTextField @bind-Value="VM.SearchString"
+                      Placeholder="Search by name, CIF or email"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      IconSize="Size.Medium"
+                      Class="mt-0"
+                      Immediate="true" />
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="VM.OpenCreateSupplierDialog">
+            New Supplier
+        </MudButton>
+    </ToolBarContent>
+
+    <HeaderContent>
+        <MudTh>CIF</MudTh>
+        <MudTh>Name</MudTh>
+        <MudTh>Phone</MudTh>
+        <MudTh>Email</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Deliveries</MudTh>
+    </HeaderContent>
+
+    <RowTemplate>
+        <MudTd DataLabel="CIF"><b>@context.Cif</b></MudTd>
+        <MudTd DataLabel="Name">@context.Name</MudTd>
+        <MudTd DataLabel="Phone">@(context.Phone ?? "—")</MudTd>
+        <MudTd DataLabel="Email">@(context.Email ?? "—")</MudTd>
+        <MudTd DataLabel="Status">
+            <MudChip T="string"
+                     Color="@(context.Active ? Color.Success : Color.Default)"
+                     Variant="Variant.Filled"
+                     Size="Size.Small">
+                @(context.Active ? "Active" : "Inactive")
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Deliveries">
+            <div @onclick:stopPropagation="true">
+                <MudButton Size="Size.Small"
+                           Variant="Variant.Text"
+                           Color="Color.Info"
+                           StartIcon="@Icons.Material.Filled.LocalShipping"
+                           OnClick="@(() => VM.OpenDeliveryNotesForSupplierCommand.ExecuteAsync(context))">
+                    @(context.Count?.DeliveryNotes ?? 0) notes
+                </MudButton>
+            </div>
+        </MudTd>
+    </RowTemplate>
+
+    <PagerContent>
+        <MudTablePager InfoFormat="{first_item}-{last_item} of {all_items}" RowsPerPageString="Rows per page:" />
+    </PagerContent>
+</MudTable>
+
+<MudDialog @bind-Visible="VM.IsSupplierDialogVisible" Options="VM.SupplierDialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@(VM.IsEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.PersonAdd)" Class="mr-3" />
+            @(VM.IsEditMode ? "Edit Supplier" : "New Supplier")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid>
+            @if (VM.IsEditMode)
+            {
+                <MudItem xs="12" sm="9">
+                    <MudTextField T="string" Label="CIF / VAT Number"
+                                  Value="VM.CurrentSupplier.Cif"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="true" />
+                </MudItem>
+                <MudItem xs="12" sm="3" Class="d-flex align-center">
+                    <MudSwitch @bind-Value="VM.CurrentSupplier.Active"
+                               Label="@(VM.CurrentSupplier.Active ? "Active" : "Inactive")"
+                               Color="Color.Success" />
+                </MudItem>
+            }
+            else
+            {
+                <MudItem xs="12">
+                    <MudTextField T="string" Label="CIF / VAT Number"
+                                  @bind-Value="VM.CurrentSupplier.Cif"
+                                  Required="true" Variant="Variant.Outlined" />
+                </MudItem>
+            }
+
+            <MudItem xs="12">
+                <MudTextField T="string" Label="Company Name"
+                              @bind-Value="VM.CurrentSupplier.Name"
+                              Required="true" Variant="Variant.Outlined" />
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudTextField T="string" Label="Registered Address (Dirección Fiscal)"
+                              @bind-Value="VM.CurrentSupplier.Address"
+                              Variant="Variant.Outlined" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Phone"
+                              @bind-Value="VM.CurrentSupplier.Phone"
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Phone" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" Label="Email"
+                              @bind-Value="VM.CurrentSupplier.Email"
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Email" />
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudTextField T="string" Label="Internal Notes"
+                              @bind-Value="VM.CurrentSupplier.Notes"
+                              Variant="Variant.Outlined" Lines="2" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="VM.CloseSupplierDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="@(() => VM.SaveSupplierCommand.ExecuteAsync(null))"
+                   Disabled="VM.IsLoading">
+            @(VM.IsEditMode ? "Update" : "Create")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog @bind-Visible="VM.IsNoteListVisible" Options="VM.NoteDialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.LocalShipping" Class="mr-3" />
+            Delivery Notes — @(VM.SelectedSupplier?.Name ?? "")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTable Items="VM.DeliveryNotes"
+                  Hover="true" Dense="true" Elevation="0" Outlined="true"
+                  OnRowClick="@((TableRowClickEventArgs<DeliveryNote> args) => VM.OnNoteRowClick(args))"
+                  RowClass="cursor-pointer">
+            <ToolBarContent>
+                <MudSpacer />
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="VM.OpenCreateNoteDialog">
+                    New Delivery Note
+                </MudButton>
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh>Internal #</MudTh>
+                <MudTh>Supplier Note #</MudTh>
+                <MudTh>Date</MudTh>
+                <MudTh>Lines</MudTh>
+                <MudTh>Total</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Internal #">
+                    <MudChip T="string" Color="Color.Secondary" Variant="Variant.Text" Size="Size.Small">
+                        @context.InternalNumber
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Supplier Note #"><b>@context.SupplierNoteNumber</b></MudTd>
+                <MudTd DataLabel="Date">@context.Date.ToLocalTime().ToString("dd/MM/yyyy")</MudTd>
+                <MudTd DataLabel="Lines">@(context.Count?.Lines ?? context.Lines?.Count ?? 0)</MudTd>
+                <MudTd DataLabel="Total">
+                    <b>@context.Total.ToString("C", VM.EuroCulture)</b>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="VM.CloseNoteList">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog @bind-Visible="VM.IsNoteDialogVisible" Options="VM.NoteDialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@(VM.IsNoteEditMode? Icons.Material.Filled.Receipt : Icons.Material.Filled.NoteAdd)" Class="mr-3" />
+            @(VM.IsNoteEditMode ? $"Delivery Note: {VM.CurrentNote.InternalNumber}" : "New Delivery Note")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid>
+            @if (VM.IsNoteEditMode)
+            {
+                <MudItem xs="12" sm="4">
+                    <MudTextField T="string" Label="Internal #"
+                                  Value="VM.CurrentNote.InternalNumber"
+                                  Variant="Variant.Outlined" ReadOnly="true" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField T="string" Label="Total"
+                                  Value="@VM.CurrentNote.Total.ToString("C", VM.EuroCulture)"
+                                  Variant="Variant.Outlined" ReadOnly="true" />
+                </MudItem>
+                <MudItem xs="12" sm="4" />
+            }
+
+            <MudItem xs="12" sm="8">
+                <MudTextField T="string" Label="Supplier Note Number"
+                              @bind-Value="VM.CurrentNote.SupplierNoteNumber"
+                              Required="true" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudDatePicker Label="Date"
+                               @bind-Date="@NoteDate"
+                               Variant="Variant.Outlined" />
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudTextField T="string" Label="Notes"
+                              @bind-Value="VM.CurrentNote.Notes"
+                              Variant="Variant.Outlined" Lines="2" />
+            </MudItem>
+
+            <MudItem xs="12">
+                <div class="d-flex align-center justify-space-between mb-2">
+                    <MudText Typo="Typo.subtitle1"><b>Received Items</b></MudText>
+                    <MudTooltip Text="Stock is updated immediately when each line is saved">
+                        <MudButton StartIcon="@Icons.Material.Filled.Add"
+                                   Size="Size.Small"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Secondary"
+                                   OnClick="VM.AddEmptyNoteLine">
+                            Add Line
+                        </MudButton>
+                    </MudTooltip>
+                </div>
+
+                <MudTable Items="VM.CurrentNote.Lines"
+                          Dense="true" Elevation="0" Outlined="true" Hover="true"
+                          Context="line">
+                    <HeaderContent>
+                        <MudTh>Product</MudTh>
+                        <MudTh>SKU</MudTh>
+                        <MudTh Style="width:80px">Qty</MudTh>
+                        <MudTh>Unit Cost</MudTh>
+                        <MudTh>Tax %</MudTh>
+                        <MudTh>Discount %</MudTh>
+                        <MudTh>Line Total</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Product">
+                            @if (line.Id == 0)
+                            {
+                                <MudAutocomplete T="Product"
+                                                 SearchFunc="@VM.SearchProducts"
+                                                 Value="@(VM.Products.FirstOrDefault(p => p.Id == line.ProductId))"
+                                                 ValueChanged="@(p => VM.OnProductSelected(line, p))"
+                                                 ToStringFunc="@(p => p == null ? "" : p.Name)"
+                                                 Placeholder="Search product..."
+                                                 Margin="Margin.Dense"
+                                                 Dense="true"
+                                                 Variant="Variant.Text" />
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2">
+                                    <b>@(VM.Products.FirstOrDefault(p => p.Id == line.ProductId)?.Name ?? $"#{line.ProductId}")</b>
+                                </MudText>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="SKU">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                @(VM.Products.FirstOrDefault(p => p.Id == line.ProductId)?.Sku ?? "—")
+                            </MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Qty">
+                            @if (line.Id == 0)
+                            {
+                                <MudNumericField T="float"
+                                                 Value="line.Quantity"
+                                                 ValueChanged="@(v => { line.Quantity = v; VM.RecalculateLineTotals(); })"
+                                                 Margin="Margin.Dense" Variant="Variant.Text"
+                                                 Min="0.01f" />
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2">@line.Quantity</MudText>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Unit Cost">
+                            @if (line.Id == 0)
+                            {
+                                <MudNumericField T="decimal"
+                                                 Value="line.UnitCost"
+                                                 ValueChanged="@(v => { line.UnitCost = v; VM.RecalculateLineTotals(); })"
+                                                 Margin="Margin.Dense" Variant="Variant.Text"
+                                                 Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Euro" />
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2">@line.UnitCost.ToString("C", VM.EuroCulture)</MudText>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Tax %">
+                            @if (line.Id == 0)
+                            {
+                                <MudNumericField T="decimal"
+                                                 Value="line.TaxRate"
+                                                 ValueChanged="@(v => { line.TaxRate = v; VM.RecalculateLineTotals(); })"
+                                                 Margin="Margin.Dense" Variant="Variant.Text"
+                                                 Adornment="Adornment.End" AdornmentText="%" />
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2">@line.TaxRate %</MudText>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Discount %">
+                            @if (line.Id == 0)
+                            {
+                                <MudNumericField T="decimal"
+                                                 Value="line.Discount"
+                                                 ValueChanged="@(v => { line.Discount = v; VM.RecalculateLineTotals(); })"
+                                                 Margin="Margin.Dense" Variant="Variant.Text"
+                                                 Adornment="Adornment.End" AdornmentText="%" />
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2">@line.Discount %</MudText>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Line Total">
+                            <MudText Typo="Typo.body2" Color="Color.Primary">
+                                <b>@line.LineTotal.ToString("C", VM.EuroCulture)</b>
+                            </MudText>
+                        </MudTd>
+                    </RowTemplate>
+                    <FooterContent>
+                        <MudTd colspan="5" />
+                        <MudTd>
+                            <MudText Typo="Typo.body2">Subtotal</MudText>
+                            <MudText Typo="Typo.body2">Tax</MudText>
+                            <MudText Typo="Typo.subtitle2" Color="Color.Primary"><b>Total</b></MudText>
+                        </MudTd>
+                        <MudTd>
+                            <MudText Typo="Typo.body2">@VM.CurrentNote.Subtotal.ToString("C", VM.EuroCulture)</MudText>
+                            <MudText Typo="Typo.body2">@VM.CurrentNote.TaxTotal.ToString("C", VM.EuroCulture)</MudText>
+                            <MudText Typo="Typo.subtitle2" Color="Color.Primary">
+                                <b>@VM.CurrentNote.Total.ToString("C", VM.EuroCulture)</b>
+                            </MudText>
+                        </MudTd>
+                    </FooterContent>
+                </MudTable>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="VM.CloseNoteDialog">Close</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="@(() => VM.SaveNoteCommand.ExecuteAsync(null))"
+                   Disabled="VM.IsLoading">
+            @(VM.IsNoteEditMode ? "Update Note" : "Save Note")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private DateTime? NoteDate
+    {
+        get => VM.CurrentNote.Date;
+        set => VM.CurrentNote.Date = value ?? DateTime.Today;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await VM.InitializeCommand.ExecuteAsync(null);
+    }
+}
